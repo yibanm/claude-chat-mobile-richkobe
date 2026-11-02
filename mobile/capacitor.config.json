@@ -1,0 +1,19 @@
+{
+  "appId": "com.richkobe.claudechatmobile",
+  "appName": "claude chat mobile richkobe",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  },
+  "android": {
+    "allowMixedContent": true,
+    "backgroundColor": "#F4F3EE"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

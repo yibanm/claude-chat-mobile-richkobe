@@ -59,3 +59,8 @@
 *.mjs                       text
 *.json                      text
 *.md                        text
+
+# Capacitor 安卓壳的 Gradle wrapper 脚本：无扩展名，不受上面 *.sh 那条规则覆盖。
+# 必须钉 LF —— core.autocrlf=true 的工作区会把它转成 CRLF，shebang 随之变成
+# `#!/bin/sh\r`，在 ubuntu runner 上直接 `bad interpreter: No such file or directory`。
+/mobile/android/gradlew text eol=lf

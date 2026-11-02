@@ -58,6 +58,11 @@ const PREFIX_RULES = [
   // desktop/ = macOS 专属入口整体；launchd/ 更具体，必须排在前面
   ['desktop/launchd/', 'Desktop integration'],
   ['desktop/', 'Desktop integration'],
+  // mobile/ = Capacitor 安卓壳整体（与 desktop/ 对称，都是「非 web 运行时的打包入口」）。
+  // 只登记入库的源码：android/ 工程 + scripts/ + 顶层配置。壳的前端产物 www/ 与依赖
+  // node_modules/ 均在 .gitignore（前者由 prepare-www.mjs 从 app/public 生成、入库会与源漂移），
+  // 故 git ls-files --exclude-standard 扫不到，不需要在此为它们开规则。
+  ['mobile/', 'Mobile shell'],
   ['app/src/', 'Backend source'],
   ['app/public/js/app/', 'Frontend source'],
   ['app/public/js/logic/', 'Frontend source'],

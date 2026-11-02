@@ -1,0 +1,195 @@
+name: Android APK
+
+# ── 触发方式 ────────────────────────────────────────────────────────────
+# ★ 本仓库是 fork（yibanm/claude-chat-mobile-richkobe ← Ike-li/claude-chat-mobile）。
+#   GitHub 对 fork **默认禁用 push 触发的 Actions**（防白嫖 runner），实测表现为
+#   push 后 GET /actions/runs 恒为 total_count: 0，而 workflow 已注册且 state: active。
+#   但仓库所有者显式发起的 workflow_dispatch **不受此限制**。
+#   故 workflow_dispatch 是主要触发手段，push 保留（若该 fork 的 Actions 已启用则会双触发，
+#   由下面的 concurrency 取消旧的，不会浪费两轮）。
+on:
+  workflow_dispatch:
+  push:
+    branches: [dev, build, android]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write   # 仅 tag 构建发 Release 时需要；平时构建用不到
+
+# 同一分支的新推送取消进行中的旧构建（tag 构建不取消，保证发版完整）
+concurrency:
+  group: ${{ github.workflow }}-${{ startsWith(github.ref, 'refs/tags/') && github.ref || github.head_ref || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      # 没配签名 secrets 时 build.gradle 会回退 debug key —— 那种产物只能本地试用，
+      # 绝不允许发 Release（CLAUDE.md 0.10：禁止 release 用 debug keystore）。
+      # 这个变量是给下面「发版门」用的开关。
+      HAS_SIGNING_KEY: ${{ secrets.CCM_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Capacitor 8 的 capacitor.build.gradle 写死 JavaVersion.VERSION_21，
+      # 且 Gradle 8.14.3 官方支持上限为 JDK 24 —— 故钉 21，不用 latest。
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"   # 项目 .nvmrc 要求 >=20；与本机 v24 对齐
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            mobile/package-lock.json
+
+      # Gradle 依赖缓存（官方 action，只缓存依赖不动构建缓存，安全）
+      - uses: gradle/actions/setup-gradle@v4
+
+      # ── Android SDK：用 runner 预装的，不装 android-actions/setup-android@v3 ──
+      # 那个 action 内部固定安装已被 Google 下架的 `tools` 包，会整体失败
+      # （日志 `Failed to find package 'tools'` + sdkmanager exit 1），重跑必然复现。
+      - name: Set up Android SDK
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> "$GITHUB_ENV"
+          # cmdline-tools 下的目录名带版本号，用通配符，别写死 latest
+          SDKMANAGER=$(ls "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | head -1)
+          [ -z "$SDKMANAGER" ] && { echo "::error::sdkmanager not found"; ls -R "$ANDROID_HOME" | head -40; exit 1; }
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          # compileSdk/targetSdk = 36（见 mobile/android/variables.gradle），build-tools 同版
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      # ── 1. 项目根依赖（prepare-www.mjs 要从 socket.io 的 client-dist 取 socket.io.js）──
+      - name: Install server dependencies
+        run: npm ci
+
+      # ── 2. 壳工程依赖（Capacitor 工具链）──
+      - name: Install mobile shell dependencies
+        working-directory: mobile
+        run: npm ci
+
+      # ── 3. 生成 www 并同步进安卓工程 ─────────────────────────────
+      # prepare-www.mjs 会做引用自检：index.html 里任何本地路径在 www 里缺失就直接失败退出，
+      # 挡的是「server 有、磁盘没有」的运行时端点被漏拷（socket.io.js 正是这一类）。
+      - name: Prepare web assets and sync
+        working-directory: mobile
+        run: |
+          node scripts/prepare-www.mjs
+          npx cap sync android
+
+      # ── 4. release 签名密钥（可选；仅 tag 发版时必需）──────────────
+      # 凭据只经 secrets → 环境变量 → 临时文件，不落仓库、不打印。
+      - name: Materialize release signing key
+        if: env.HAS_SIGNING_KEY == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CCM_KEYSTORE_BASE64 }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/richkobe-release.jks"
+          # build.gradle 优先读这四个环境变量（见其顶部注释），故不必生成 key.properties
+          echo "CCM_KEYSTORE_PATH=$RUNNER_TEMP/richkobe-release.jks" >> "$GITHUB_ENV"
+          echo "CCM_KEY_ALIAS=${{ secrets.CCM_KEY_ALIAS }}" >> "$GITHUB_ENV"
+          # 密码不进 GITHUB_ENV（会被后续步骤的环境继承并可能出现在日志里），
+          # 只在构建那一步的 env: 块内注入。这里仅记录「已就绪」供人工核对。
+          echo "签名密钥已就位（别名与路径已导出，密码将在构建步骤内注入）"
+
+      # ── 5. 构建 release APK ───────────────────────────────────────
+      # 用仓库里已提交的 gradlew + wrapper（gradle-8.14.3-all.zip），
+      # **不在 CI 里跑 `gradle wrapper` 动态生成**：setup-gradle 提供的是 Gradle 9.8.1，
+      # 而「生成 wrapper」这个动作本身要先评估当前项目、加载 AGP 插件，会撞
+      # `Plugin 'com.android.internal.application' relies on ... a Gradle internal API
+      #  that was removed in Gradle 9.6.0`；--gradle-version 只决定将来下载哪个版本，管不了当前这次。
+      - name: Build release APK
+        working-directory: mobile/android
+        env:
+          CCM_KEYSTORE_PASSWORD: ${{ secrets.CCM_KEYSTORE_PASSWORD }}
+          CCM_KEY_PASSWORD: ${{ secrets.CCM_KEY_PASSWORD }}
+        run: |
+          set +e
+          ./gradlew --no-daemon --stacktrace assembleRelease 2>&1 | tee gradle.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" != 0 ]; then
+            # 把真错误提成 annotation（不用点开 raw log 就能看到）
+            grep -E "^e: |error:|What went wrong|^> |Caused by|FAILED|Exception" gradle.log \
+              | grep -v "^> Task" | head -30 | while IFS= read -r line; do
+                echo "::error::${line:0:900}"
+              done
+          fi
+          exit $status
+
+      # ── 6. 校验产物并改名 ─────────────────────────────────────────
+      # 命名规范见 CLAUDE.md 0.10：软件名-版本-平台.扩展名。
+      # ABI 分包后产物名为 app-arm64-v8a-release.apk（build.gradle 的 splits.abi 只留 arm64-v8a）。
+      - name: Verify and rename APK
+        run: |
+          version=$(grep -oE 'versionName "[^"]+"' mobile/android/app/build.gradle | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          [ -n "$version" ] || { echo "::error::读不到 versionName"; exit 1; }
+
+          apk=$(ls mobile/android/app/build/outputs/apk/release/app-*-release.apk 2>/dev/null | head -1)
+          [ -n "$apk" ] || { echo "::error::没找到 release APK"; exit 1; }
+
+          name="claude-chat-mobile-richkobe-${version}-android-arm64.apk"
+          mv "$apk" "$name"
+          echo "APK_NAME=$name" >> "$GITHUB_ENV"
+          echo "APK_VERSION=$version" >> "$GITHUB_ENV"
+
+          # ── 验签：确认不是 debug key（CLAUDE.md 0.10 的硬要求）──
+          # 只在配了主密钥时才验；没配时产物是 debug 签名的，下面的发版门会挡住它。
+          if [ "$HAS_SIGNING_KEY" = "true" ]; then
+            BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+            "$BT/apksigner" verify --print-certs "$name" | tee signer.txt
+            grep -qi "Verifies" signer.txt || { echo "::error::APK 验签未通过"; exit 1; }
+            grep -qi "CN=richkobe" signer.txt || { echo "::error::签名者不是主密钥 richkobe（可能是 debug key）"; exit 1; }
+            echo "✓ 签名校验通过：主密钥 richkobe"
+          else
+            echo "::warning::未配置 CCM_KEYSTORE_BASE64，本次产物为 debug 签名——仅供本地试用，不会发布 Release"
+          fi
+
+          ls -la "$name"
+
+      # ── 7. 上传为 workflow artifact（阶段一：给用户下载测试）────────
+      # 目录名刻意不带点前缀：actions/upload-artifact 默认排除隐藏文件
+      # （include-hidden-files: false），点开头会被静默漏掉。
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}
+          path: ${{ env.APK_NAME }}
+          if-no-files-found: error
+
+      # ── 8. 发版门：只有 tag + 主密钥签名 才建 Release（阶段二，需用户明确指示打 tag）──
+      # 更新日志从仓库 CHANGELOG.md 抽当前 tag 的段落，**不写死在 workflow 的 body 里**
+      # （CLAUDE.md 0.10 第 8 条）。这样日志随代码走、改日志不用改 CI。
+      - name: Extract changelog for this tag
+        if: startsWith(github.ref, 'refs/tags/') && env.HAS_SIGNING_KEY == 'true'
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          # 本项目 CHANGELOG 的小节头是 `## v1.13.0 — 2026-09-24`（版本号后带日期），
+          # 故用【前缀匹配】而非精确相等——精确匹配 `$0 == "## " tag` 在这种格式下永远匹配不到，
+          # 症状是「日志抽出来是空的」然后被下面的 -s 检查报错，排查时容易误判成 CHANGELOG 没写。
+          awk -v tag="$tag" '
+            index($0, "## " tag) == 1 { show=1; next }
+            show && /^## / { exit }
+            show { print }
+          ' CHANGELOG.md > "$RUNNER_TEMP/release-body.md"
+          if [ ! -s "$RUNNER_TEMP/release-body.md" ]; then
+            echo "::error::CHANGELOG.md 里没有 '${tag}' 小节（应形如 '## ${tag} — 日期'）"
+            exit 1
+          fi
+          echo "已抽取 ${tag} 的更新日志（$(wc -l < "$RUNNER_TEMP/release-body.md") 行）"
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') && env.HAS_SIGNING_KEY == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: claude chat mobile richkobe ${{ github.ref_name }}
+          make_latest: true
+          body_path: ${{ runner.temp }}/release-body.md
+          files: ${{ env.APK_NAME }}

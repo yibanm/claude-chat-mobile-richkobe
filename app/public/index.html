@@ -11,7 +11,7 @@
   <script src="/js/sw-cleanup.js" defer></script>
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F3EE">
   <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121211">
-  <title>Claude Chat Mobile</title>
+  <title>Claude Chat Mobile richkobe</title>
   <!-- PWA 可安装壳：manifest + 图标 + E15 Web Push 用的 /sw.js（零缓存逻辑，非 offline 方案——
        §6 非目标指的是"缓存/离线可用"，不含 push 所需的最小 SW，见 public/sw.js。
        放站点根而非 /js/ 下：SW 默认 scope 即脚本所在目录，只有根目录才能控制整站） -->
@@ -21,7 +21,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="CCM">
+  <meta name="apple-mobile-web-app-title" content="CCM richkobe">
   <!-- 前端库自托管（vendored，见 public/vendor/）：原走 CDN（jsdelivr/tailwind），但手机网络常连不上 CDN，
        阻塞式 <script> 会卡住后续 app.js 执行 → socket 永不初始化、页面死在「未连接」。改本地后任何网络（含纯局域网）皆可用。 -->
   <script src="/vendor/tailwind.js"></script>

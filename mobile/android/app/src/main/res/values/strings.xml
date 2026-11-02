@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">claude chat mobile richkobe</string>
+    <string name="title_activity_main">claude chat mobile richkobe</string>
+    <string name="package_name">com.richkobe.claudechatmobile</string>
+    <string name="custom_url_scheme">com.richkobe.claudechatmobile</string>
+</resources>

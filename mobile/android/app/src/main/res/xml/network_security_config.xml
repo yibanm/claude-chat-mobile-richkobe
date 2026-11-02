@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  明文流量（http）放行策略。
+
+  为什么必须开：本产品是「手机连自己电脑上的 server」的自托管工具，server 跑在局域网
+  http://192.168.x.x:3000 这类地址上（README 的主场景就是「同一 Wi-Fi 局域网地址」）。
+  而 targetSdkVersion 36 下 Android 默认 cleartextTrafficPermitted=false，不放行的症状是
+  WebView 里所有请求 ERR_CLEARTEXT_NOT_PERMITTED、App 一直转圈连不上，且**不报任何可读错误**。
+  Capacitor 自身不注入这条（实测 @capacitor/android 的 AndroidManifest.xml 无 usesCleartextTraffic、
+  capacitor.config.json 的 server.cleartext 只管 WebViewLocalServer，不管系统层明文策略），
+  故必须在此显式配置。
+
+  为什么用 base-config 全开而不是精确列举域名：network_security_config 的 <domain> 只支持
+  主机名精确/子域匹配，**不支持 CIDR 网段**，而本产品的 server 地址是用户自己填的任意局域网 IP
+  （192.168.* / 10.* / 172.16-31.* / localhost 都可能，且随 Wi-Fi 变化，见 shell-bridge 首屏配置页）。
+  无法枚举 → 只能全开。这是此类「套壳连自托管 server」应用的标准做法。
+
+  安全权衡（如实记录，不粉饰）：全开明文意味着 AUTH_TOKEN 在局域网内以明文传输，同网段存在
+  中间人时可被嗅探。可接受的理由：① 传输范围限于用户自己的局域网；② 本产品定位就是局域网
+  自托管（README「控制面在你自己机器上」「局域网内可以完全闭环」）；③ 公网部署路径走
+  Cloudflare Tunnel / Tailscale，那两条是 https，不受此配置影响也不会因此降级。
+  若日后要做「公网 https + 局域网 http」的严格分离，可改为 debug 变体开明文、release 变体不开，
+  但那样局域网场景的正式包就不可用了，与本产品的核心用途冲突。
+-->
+<network-security-config>
+  <!-- 基线：允许明文（局域网 http 必需），https 仍走系统默认的证书校验，不放松 -->
+  <base-config cleartextTrafficPermitted="true">
+    <trust-anchors>
+      <certificates src="system" />
+    </trust-anchors>
+  </base-config>
+</network-security-config>

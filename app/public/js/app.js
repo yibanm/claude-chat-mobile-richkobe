@@ -206,6 +206,17 @@ import { createDrawerController } from './app/drawer.js';
 import { createSessionDeleteController } from './app/session-delete.js';
 import { createRewindCommandController } from './app/rewind-command.js';
 import { bindSessionSearchInput, bindSessionRowsHost } from './app/session-search.js';
+// 安卓壳（Capacitor APK）适配：把「同源」假设换成「用户配置的电脑 server 地址」。
+// 浏览器 PWA 下这些函数全部惰性返回（isShell() 为 false），不改变任何既有行为——
+// 判据与各函数职责见 shell-bridge.js 头注。
+import { socketUri, socketTransportOptions, apiUrl, ensureServerAddress } from './shell-bridge.js';
+
+// 安卓壳（Capacitor APK）内首次启动时，页面 origin 是 http://localhost、还不知道电脑 server 在哪，
+// 此时必须先让用户填一次地址，否则下面 io() 会连 localhost 而永远转圈。故在 IIFE 之前挡一道：
+// 壳内未配置 → 渲染中文配置页并 await 用户填完；浏览器 PWA 内 isShell() 为 false，
+// ensureServerAddress 立即 resolve，本行等价于不存在（顶层 await 是 ESM 特性，app.js 本就是 module）。
+await ensureServerAddress();
+
 (() => {
   // ---- token 注入（4a：#token= → localStorage → 立即清地址栏）----
   const hashMatch = location.hash.match(/#token=(.+)/);
@@ -851,7 +862,11 @@ import { bindSessionSearchInput, bindSessionRowsHost } from './app/session-searc
       marked,
       DOMPurify,
       Notification: window.Notification,
-      fetch: window.fetch.bind(window),
+      // 壳内把相对路径（'/push/*'）补成电脑 server 的绝对地址——APK 里页面 origin 是
+      // http://localhost，相对路径会打在 APK 自己身上（404）。浏览器内 apiUrl 原样返回，语义不变。
+      // 只改写字符串形式的 URL：Request 对象自带 origin，改写反而破坏它。
+      // 收敛在这一处而非各调用点，是因为 notifications.js 的三条 /push/* 全走 deps.fetch。
+      fetch: (input, init) => window.fetch(typeof input === 'string' ? apiUrl(input) : input, init),
       alert: window.alert.bind(window),
       console,
     },
@@ -1264,7 +1279,12 @@ import { bindSessionSearchInput, bindSessionRowsHost } from './app/session-searc
   const onTaskNotification = taskStatus.onComplete;
 
   // ---- socket ----
-  const socket = appContext.setSocket(io({
+  // 壳内第一个参数是电脑 server 的 origin；浏览器内是 **undefined**（不能是空串——socket.io 的
+  // url() 用 `null == uri` 判同源兜底，空串不满足会被当主机名拼成 'http://'，见 shell-bridge.js
+  // 的 socketUri 注释）。transports 仅壳内给（强制 websocket，绕开跨域 polling 的 CORS），
+  // 浏览器内为 undefined 即保持原有 polling→ws 升级策略。PWA 行为零变化。
+  const socket = appContext.setSocket(io(socketUri(), {
+    ...socketTransportOptions(),
     auth: { token, deviceToken },
     // 移动端常切后台/息屏，断开后想尽快回来：调小重连退避（默认 1000/5000ms 太久）
     reconnectionDelay: 500,
@@ -1744,7 +1764,7 @@ import { bindSessionSearchInput, bindSessionRowsHost } from './app/session-searc
   // 探测 /health 是否被 Access 302 到登录页（redirect:manual → opaqueredirect）；是则弹手动重登（不 auto-reload，防死循环）。
   async function maybeAccessRelogin() {
     try {
-      const r = await fetch('/health', { redirect: 'manual', cache: 'no-store' });
+      const r = await fetch(apiUrl('/health'), { redirect: 'manual', cache: 'no-store' });
       if (r.type === 'opaqueredirect' || r.status === 0) showAccessReloginGate();
     } catch { /* 网络错误：不误报 */ }
   }

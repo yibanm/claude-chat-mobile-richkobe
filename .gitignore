@@ -93,3 +93,17 @@ desktop/build/
 # 而没有任何门禁能守住它们；宣传层本就不进主分支。不入库：否则会被 inventory 扫成未分类文件。
 docs/marketing-shots
 docs/ui-visible-features.public.md
+
+# ── mobile/ 安卓壳（Capacitor）────────────────────────────────────────────
+# www/ 是纯生成物：由 mobile/scripts/prepare-www.mjs 从 app/public/ 复制而来，
+# 并补入 socket.io 的 client-dist（那是 server 运行时端点、磁盘上不存在）。
+# 入库等于把同一份前端存两遍，且必然与 app/public/ 漂移。
+mobile/www/
+# 壳工程自己的依赖（与项目根 node_modules 相互独立：根那份是 server/PWA 的运行时依赖，
+# 这份只含 Capacitor 工具链）
+mobile/node_modules/
+# 本机签名凭据（CLAUDE.md 0.10：密钥与密码永不入库）。CI 走 secrets 环境变量通道。
+mobile/android/key.properties
+mobile/key.properties
+# Capacitor 生成的中间配置（cap sync 会重建）
+mobile/android/app/src/main/assets/capacitor.plugins.json
