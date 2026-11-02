@@ -99,62 +99,140 @@ export function apiUrl(path) {
   return base ? `${base}${p}` : p;
 }
 
-// 壳内首屏：没有 server 地址时渲染中文配置页，填完存好再 resolve。
-// 浏览器内直接 resolve（无需配置）。返回 Promise 以便 app 启动流程 await。
+// ── 地址配置浮层（首屏与重配共用同一份实现）──────────────────────
 //
-// 刻意用内联样式而非 tailwind/app.css：这个页面出现在主应用之前，此时若 CSS 尚未加载完，
+// 刻意用内联样式而非 tailwind/app.css：首屏那次出现在主应用之前，此时 CSS 可能尚未加载完，
 // 用户会看到一个错位到无法使用的表单——而「填不进去地址」等于整个 APK 不可用。
+//
+// existing 非空时预填当前地址，并把按钮文案换成「保存并重新连接」（改了地址必须整页重载：
+// socket 已经用旧地址握手过，localStorage 里的 auth_token / device_token 也要重新走一遍流程，
+// 局部重连会留下一堆旧状态的边角情况，不值得省这一次刷新）。
+function renderAddressOverlay(doc, { existing = '', onDone } = {}) {
+  const overlay = doc.createElement('div');
+  overlay.id = 'ccm-shell-setup';
+  overlay.setAttribute('style', [
+    'position:fixed', 'inset:0', 'z-index:2147483647',
+    'background:#F4F3EE', 'color:#1F1E1B',
+    'display:flex', 'flex-direction:column', 'align-items:center', 'justify-content:center',
+    'padding:24px', 'font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif',
+    'box-sizing:border-box',
+  ].join(';'));
+  overlay.innerHTML = `
+    <div style="width:100%;max-width:420px;text-align:center">
+      <div style="font-size:20px;font-weight:600;margin-bottom:8px">claude chat mobile richkobe</div>
+      <div style="font-size:14px;line-height:1.6;margin-bottom:24px;opacity:.75">
+        ${existing ? '修改电脑上的服务地址。' : '填写你电脑上正在运行的服务地址。<br>在电脑终端启动后，日志里「可访问」那一行就是它。'}
+      </div>
+      <input id="ccm-shell-addr" type="url" inputmode="url" autocapitalize="off" autocorrect="off"
+             placeholder="例如 192.168.1.4:3000" value="${existing.replace(/"/g, '&quot;')}"
+             style="width:100%;box-sizing:border-box;padding:14px;font-size:16px;border:1px solid #C9C6BC;border-radius:10px;background:#fff;color:#1F1E1B;margin-bottom:12px">
+      <div id="ccm-shell-err" style="min-height:20px;font-size:13px;color:#B4232A;margin-bottom:8px"></div>
+      <button id="ccm-shell-go" type="button"
+              style="width:100%;padding:14px;font-size:16px;font-weight:600;border:0;border-radius:10px;background:#1F1E1B;color:#fff;cursor:pointer">
+        ${existing ? '保存并重新连接' : '连接'}
+      </button>
+      ${existing ? `<button id="ccm-shell-cancel" type="button"
+              style="width:100%;padding:12px;margin-top:10px;font-size:15px;border:1px solid #C9C6BC;border-radius:10px;background:transparent;color:#1F1E1B;cursor:pointer">
+              取消
+            </button>` : ''}
+      <div style="font-size:12px;line-height:1.7;margin-top:20px;opacity:.6;text-align:left">
+        提示：手机和电脑需在同一 Wi-Fi。电脑上服务未启动时连接会失败——请先在电脑跑 npm start。<br>
+        连不上时可长按屏幕右下角呼出本页重填地址。
+      </div>
+    </div>`;
+  doc.body.appendChild(overlay);
+
+  const input = overlay.querySelector('#ccm-shell-addr');
+  const err = overlay.querySelector('#ccm-shell-err');
+  const close = () => { overlay.remove(); onDone?.(false); };
+
+  overlay.querySelector('#ccm-shell-cancel')?.addEventListener('click', close);
+  const submit = () => {
+    const r = normalizeServerAddress(input.value);
+    if (!r.ok) { err.textContent = r.error; input.focus(); return; }
+    saveServerOrigin(r.origin);
+    err.textContent = '';
+    overlay.remove();
+    onDone?.(true, r.origin);
+  };
+  overlay.querySelector('#ccm-shell-go').addEventListener('click', submit);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  setTimeout(() => { input.focus(); if (existing) input.select(); }, 50);
+  return overlay;
+}
+
+// 壳内首屏：没有 server 地址时渲染中文配置页，填完存好再 resolve。浏览器内直接 resolve。
+// 返回 Promise 以便 app.js 的启动流程 await（它是 ESM 模块，顶层 await 可用）。
 export function ensureServerAddress(doc = document) {
   if (!isShell()) return Promise.resolve(true);
   if (getServerOrigin()) return Promise.resolve(true);
-
   return new Promise(resolve => {
-    const overlay = doc.createElement('div');
-    overlay.id = 'ccm-shell-setup';
-    overlay.setAttribute('style', [
-      'position:fixed', 'inset:0', 'z-index:2147483647',
-      'background:#F4F3EE', 'color:#1F1E1B',
-      'display:flex', 'flex-direction:column', 'align-items:center', 'justify-content:center',
-      'padding:24px', 'font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif',
-      'box-sizing:border-box',
-    ].join(';'));
-    overlay.innerHTML = `
-      <div style="width:100%;max-width:420px;text-align:center">
-        <div style="font-size:20px;font-weight:600;margin-bottom:8px">claude chat mobile richkobe</div>
-        <div style="font-size:14px;line-height:1.6;margin-bottom:24px;opacity:.75">
-          填写你电脑上正在运行的服务地址。<br>
-          在电脑终端启动后，日志里「可访问」那一行就是它。
-        </div>
-        <input id="ccm-shell-addr" type="url" inputmode="url" autocapitalize="off" autocorrect="off"
-               placeholder="例如 192.168.1.4:3000"
-               style="width:100%;box-sizing:border-box;padding:14px;font-size:16px;border:1px solid #C9C6BC;border-radius:10px;background:#fff;color:#1F1E1B;margin-bottom:12px">
-        <div id="ccm-shell-err" style="min-height:20px;font-size:13px;color:#B4232A;margin-bottom:8px"></div>
-        <button id="ccm-shell-go" type="button"
-                style="width:100%;padding:14px;font-size:16px;font-weight:600;border:0;border-radius:10px;background:#1F1E1B;color:#fff;cursor:pointer">
-          连接
-        </button>
-        <div style="font-size:12px;line-height:1.7;margin-top:20px;opacity:.6;text-align:left">
-          提示：手机和电脑需在同一 Wi-Fi。地址改了随时可在设置里重填（长按此处也可）。<br>
-          电脑上服务未启动时，连接会失败——请先在电脑跑 npm start。
-        </div>
-      </div>`;
-    doc.body.appendChild(overlay);
-
-    const input = overlay.querySelector('#ccm-shell-addr');
-    const err = overlay.querySelector('#ccm-shell-err');
-    const go = overlay.querySelector('#ccm-shell-go');
-
-    // 长按标题区重填（已存过地址后再次进入的入口由 app 内设置页承担，这里是兜底）
-    const submit = () => {
-      const r = normalizeServerAddress(input.value);
-      if (!r.ok) { err.textContent = r.error; input.focus(); return; }
-      saveServerOrigin(r.origin);
-      err.textContent = '';
-      overlay.remove();
-      resolve(true);
-    };
-    go.addEventListener('click', submit);
-    input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
-    setTimeout(() => input.focus(), 50);
+    renderAddressOverlay(doc, { onDone: () => resolve(true) });
   });
 }
+
+// 重新打开地址配置页（已存过地址时的修改入口）。保存后整页重载以用新地址重连。
+export function openServerAddressEditor(doc = document) {
+  if (!isShell()) return;
+  renderAddressOverlay(doc, {
+    existing: getServerOrigin(),
+    onDone: saved => { if (saved) location.reload(); },
+  });
+}
+
+// 连接反复失败时给出重配入口。
+//
+// 为什么需要它：地址填错、电脑换了 Wi-Fi 导致 IP 变化、或 server 没起——这三种都是 APK 用户
+// 真实会遇到的情况，而界面上原本**没有任何入口能改地址**，用户只能去系统设置里清除应用数据
+// （顺带把已信任的设备指纹和令牌一起清掉，还要重新走设备审批）。这是死路，必须给出口。
+//
+// 为什么挂在「连接失败」而不是常驻按钮：常驻按钮要占界面位置、还要跟项目的设置面板做视觉
+// 一致，改动面大得多；而「连不上」正是唯一真正需要改地址的时刻。
+//
+// 为什么累计 3 次才出现：项目把重连退避调到了 500ms/2000ms（app.js 的 io 选项），一次网络抖动
+// 就会连撞几次。首次失败就弹浮层会在信号不稳时反复打断用户。3 次约等于「确实连不上」。
+//
+// 长按右下角呼出：给「已经连上但想改地址」的情况留一个入口，不必等它断。
+// 用右下角一小块透明区域而非可见按钮——可见按钮会与项目自己的底栏（停止键/权限 chip/statusline）
+// 抢位置，而那是本项目界面最密的区域。
+export function installShellRecoveryEntry(socket, doc = document, { failuresBeforePrompt = 3 } = {}) {
+  if (!isShell()) return;
+
+  let failures = 0;
+  let shown = false;
+  const promptOnce = () => {
+    if (shown) return;
+    shown = true;
+    openServerAddressEditor(doc);
+  };
+
+  socket?.on?.('connect', () => { failures = 0; });
+  socket?.on?.('connect_error', err => {
+    // 令牌无效（unauthorized）不是地址问题，弹「改地址」只会把人引向错误的排查方向。
+    if (String(err?.message ?? '') === 'unauthorized') return;
+    failures += 1;
+    if (failures >= failuresBeforePrompt) promptOnce();
+  });
+
+  // 长按右下角 600ms 呼出配置页。
+  const HOT = 88; // 边长（px）：够好按，又不至于误触到项目底栏的按钮
+  let timer = null;
+  const inCorner = e => {
+    const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+    const y = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+    return x > window.innerWidth - HOT && y > window.innerHeight - HOT;
+  };
+  const start = e => {
+    if (!inCorner(e)) return;
+    clearTimeout(timer);
+    timer = setTimeout(() => { shown = false; promptOnce(); }, 600);
+  };
+  const cancel = () => clearTimeout(timer);
+  // touch 与 mouse 都挂：真机走 touch，开发者在桌面 Chrome 里调试壳页面时走 mouse。
+  doc.addEventListener('touchstart', start, { passive: true });
+  doc.addEventListener('touchend', cancel, { passive: true });
+  doc.addEventListener('touchmove', cancel, { passive: true });
+  doc.addEventListener('mousedown', start);
+  doc.addEventListener('mouseup', cancel);
+}
+

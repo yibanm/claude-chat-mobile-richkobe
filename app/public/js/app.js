@@ -209,7 +209,7 @@ import { bindSessionSearchInput, bindSessionRowsHost } from './app/session-searc
 // 安卓壳（Capacitor APK）适配：把「同源」假设换成「用户配置的电脑 server 地址」。
 // 浏览器 PWA 下这些函数全部惰性返回（isShell() 为 false），不改变任何既有行为——
 // 判据与各函数职责见 shell-bridge.js 头注。
-import { socketUri, socketTransportOptions, apiUrl, ensureServerAddress } from './shell-bridge.js';
+import { socketUri, socketTransportOptions, apiUrl, ensureServerAddress, installShellRecoveryEntry } from './shell-bridge.js';
 
 // 安卓壳（Capacitor APK）内首次启动时，页面 origin 是 http://localhost、还不知道电脑 server 在哪，
 // 此时必须先让用户填一次地址，否则下面 io() 会连 localhost 而永远转圈。故在 IIFE 之前挡一道：
@@ -1290,6 +1290,12 @@ await ensureServerAddress();
     reconnectionDelay: 500,
     reconnectionDelayMax: 2000,
   }));
+
+  // 安卓壳专属：连不上时给出「改 server 地址」的出口（地址填错 / 电脑换 Wi-Fi 变了 IP /
+  // server 没起，这三种都是 APK 用户真会遇到的，而界面上原本没有任何入口能改地址，
+  // 只能去系统设置清应用数据——那会连已信任设备指纹和令牌一起清掉，还要重走设备审批）。
+  // 浏览器 PWA 内 isShell() 为 false，这个函数直接 return，不注册任何监听。
+  installShellRecoveryEntry(socket);
 
   // 全局 JS 错误上报：手机浏览器无 devtools，运行期错误进本地日志抽屉（client_error）
   // 并经 logs:clientError 落服务端日志。只覆盖启动成功之后的错误——更早的解析/启动

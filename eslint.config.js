@@ -23,6 +23,14 @@ export default [
       '.reasonix/**',
       '.worktrees/**',
       'tests/infra/playground/seed/**',
+      // 安卓壳（mobile/）的两处前端【生成物】——都是 app/public 的副本，不是源码：
+      //   · mobile/www：prepare-www.mjs 从 app/public 复制而来
+      //   · mobile/android/.../assets/public：cap sync 再把 www 复制进安卓工程
+      // 源文件在 app/public/js 已被下面的浏览器侧规则覆盖；lint 副本等于把同一份代码
+      // 报两遍（且副本没有 eslint 的 browser globals 上下文，会误报 no-undef）。
+      // 二者都已 gitignore（不入库），但本地 ESLint 仍会扫工作区，故在此显式排除。
+      'mobile/www/**',
+      'mobile/android/app/src/main/assets/public/**',
     ],
   },
   js.configs.recommended,
@@ -46,7 +54,9 @@ export default [
   },
   // Node 侧：后端源码、维护脚本、测试
   {
-    files: ['app/server.js', 'app/src/**/*.js', 'scripts/**/*.js', 'tests/**/*.{js,mjs}'],
+    // scripts 与 mobile/scripts 都含 .mjs（ESM 脚本：prepare-www.mjs / set-secrets.mjs），
+    // 此前只写 *.js 会让它们落到默认无 globals 的上下文，console/process 被误报 no-undef。
+    files: ['app/server.js', 'app/src/**/*.js', 'scripts/**/*.{js,mjs}', 'mobile/scripts/**/*.{js,mjs}', 'tests/**/*.{js,mjs}'],
     languageOptions: { globals: { ...globals.node } },
   },
   // 浏览器侧：native-ESM PWA

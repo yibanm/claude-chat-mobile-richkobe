@@ -139,14 +139,32 @@ jobs:
           echo "APK_NAME=$name" >> "$GITHUB_ENV"
           echo "APK_VERSION=$version" >> "$GITHUB_ENV"
 
-          # ── 验签：确认不是 debug key（CLAUDE.md 0.10 的硬要求）──
+          # ── 验签：确认用的是主密钥，不是 debug key（CLAUDE.md 0.10 的硬要求）──
           # 只在配了主密钥时才验；没配时产物是 debug 签名的，下面的发版门会挡住它。
+          #
+          # ★ 判据是【证书 SHA-256 指纹】，不是输出里的 "Verifies" 字样或 CN 文案。
+          #   踩过一次：本机 build-tools 36 的 apksigner 输出以 "Verifies" 开头，CI 上
+          #   build-tools 37 输出的是 "V2 Signer: certificate DN: ..." 而没有那一行，
+          #   于是 grep "Verifies" 恒失败，报出「APK 验签未通过」——而实际签名是对的
+          #   （指纹与主密钥逐字节一致）。指纹是唯一跨版本稳定、且 debug key 不可能撞上的判据。
+          #   指纹不是秘密（APK 里本就带着证书），硬编码在这里是标准做法。
+          EXPECTED_SHA256="7ca63dca32db31b1de61257eeee60e883c04f660381f8f3e678b70f66d1f13b4"
           if [ "$HAS_SIGNING_KEY" = "true" ]; then
             BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
-            "$BT/apksigner" verify --print-certs "$name" | tee signer.txt
-            grep -qi "Verifies" signer.txt || { echo "::error::APK 验签未通过"; exit 1; }
-            grep -qi "CN=richkobe" signer.txt || { echo "::error::签名者不是主密钥 richkobe（可能是 debug key）"; exit 1; }
-            echo "✓ 签名校验通过：主密钥 richkobe"
+            echo "用 $BT/apksigner 验签"
+            # 2>&1 必须带上：apksigner 出错时信息走 stderr，不合并的话 signer.txt 是空的，
+            # 报出来的会是「验签未通过」而不是真实错误，排查时被引向错误方向。
+            "$BT/apksigner" verify --print-certs --verbose "$name" 2>&1 | tee signer.txt
+            actual=$(grep -oiE 'SHA-256 digest: *[0-9a-f]{64}' signer.txt | head -1 | grep -oE '[0-9a-f]{64}')
+            if [ -z "$actual" ]; then
+              echo "::error::没从 apksigner 输出里读到证书 SHA-256 指纹——输出格式可能又变了，完整输出见上"
+              exit 1
+            fi
+            if [ "$actual" != "$EXPECTED_SHA256" ]; then
+              echo "::error::签名指纹不是主密钥 richkobe（实际 $actual）——很可能是 debug key，禁止发版"
+              exit 1
+            fi
+            echo "✓ 签名校验通过：SHA-256 与主密钥一致（$actual）"
           else
             echo "::warning::未配置 CCM_KEYSTORE_BASE64，本次产物为 debug 签名——仅供本地试用，不会发布 Release"
           fi

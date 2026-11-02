@@ -18,7 +18,7 @@
 
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));     // mobile/scripts
@@ -69,7 +69,6 @@ cpSync(PUBLIC, WWW, { recursive: true });
 // index.html 引用的是 /socket.io/socket.io.js（绝对路径 → www/socket.io/socket.io.js）。
 const socketIoDir = join(WWW, 'socket.io');
 mkdirSync(socketIoDir, { recursive: true });
-const clientDistDir = dirname(socketIoClientJs);
 // client-dist 下还有 .map 与 min 变体；index.html 只引用 socket.io.js，故只补这一个文件，
 // 少拷无用体积（APK 体积敏感）。若日后 index.html 改引 min 版，这里会因缺文件而在运行时 404，
 // 由下面的引用自检兜住。
