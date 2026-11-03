@@ -331,6 +331,11 @@ await ensureServerAddress();
   const effortSelect = $('effortSelect');      // 思考强度档切换器（档位按当前模型 supportedEffortLevels 动态渲染）
   const effortRow = $('effortRow');            // effort 整行容器：当前模型不支持 effort（如 haiku）时隐藏
   const btnAttach = $('btnAttach'), fileInput = $('fileInput'), attachTray = $('attachTray'); // E17：附件
+  const btnImage = $('btnImage'), imageInput = $('imageInput'); // 电脑端选图钮（可见性由 CSS 能力媒体查询判，见 app.css）
+  // 附件来源选择 sheet（M3）：三项 + 取消，各挂一个独立隐藏 input（见 index.html 的 accept/capture 说明）
+  const attachModal = $('attachModal'), cameraInput = $('cameraInput');
+  const attachOptCamera = $('attachOptCamera'), attachOptPhoto = $('attachOptPhoto'),
+        attachOptFile = $('attachOptFile'), attachOptCancel = $('attachOptCancel');
   const attachPreviewModal = $('attachPreviewModal'), attachPreviewImg = $('attachPreviewImg'),
         attachPreviewName = $('attachPreviewName'), attachPreviewClose = $('attachPreviewClose');
   // ultracode 已从独立按钮并入「思考」档最高档（见 rebuildEffortOptions / ultracodeArmed），不再取独立按钮
@@ -540,13 +545,13 @@ await ensureServerAddress();
         const isCurrent = tileVal === activeVal || (!!model && tileVal === model);
         const title = tile.querySelector('.text-xs');
         if (isCurrent) {
-          tile.classList.add('ring-1', 'ring-accent', 'border-accent', 'text-accent', 'bg-accent-wash/30');
+          tile.classList.add('ring-1', 'ring-accent', 'border-accent', 'text-accent', 'bg-secondary-container');
           if (title) {
             title.classList.add('text-accent');
             title.classList.remove('text-ink');
           }
         } else {
-          tile.classList.remove('ring-1', 'ring-accent', 'border-accent', 'text-accent', 'bg-accent-wash/30');
+          tile.classList.remove('ring-1', 'ring-accent', 'border-accent', 'text-accent', 'bg-secondary-container');
           if (title) {
             title.classList.remove('text-accent');
             title.classList.add('text-ink');
@@ -586,7 +591,7 @@ await ensureServerAddress();
         || (!currentModel && val === 'default' && (selectedVal === 'default' || !selectedVal));
       const using = active ? t(' · 使用中') : '';
       const card = el(`
-        <div data-model="${esc(val)}" class="model-tile p-2 rounded-xl border border-line bg-surface active:bg-sunk cursor-pointer transition-all ${active ? 'ring-1 ring-accent border-accent text-accent bg-accent-wash/30' : ''}">
+        <div data-model="${esc(val)}" class="model-tile p-2 rounded-xl border border-line bg-surface active:bg-sunk cursor-pointer transition-all ${active ? 'ring-1 ring-accent border-accent text-accent bg-secondary-container' : ''}">
           <div class="text-xs font-semibold truncate ${active ? 'text-accent' : 'text-ink'}">${esc(display)}${using ? `<span class="text-[11px] font-normal opacity-80">${esc(using)}</span>` : ''}</div>
           <div class="text-xs text-ink-soft truncate mt-0.5">${esc(subtitle || val)}</div>
         </div>
@@ -801,7 +806,15 @@ await ensureServerAddress();
       consoleModal,
       consoleLogArea,
       btnAttach,
+      btnImage,
       fileInput,
+      imageInput,
+      cameraInput,
+      attachModal,
+      attachOptCamera,
+      attachOptPhoto,
+      attachOptFile,
+      attachOptCancel,
       attachTray,
       attachPreviewModal,
       attachPreviewImg,
@@ -839,6 +852,7 @@ await ensureServerAddress();
       prefAlertForeground: $('prefAlertFgComplete'),
       btnAlertPreview: $('btnAlertPreview'),
       prefPushPreview: $('prefPushPreview'),
+      prefStatusline: $('prefStatusline'),
       prefLangGroup: $('prefLangGroup'),
       btnPush,
       taskProgressBanner,
@@ -853,6 +867,9 @@ await ensureServerAddress();
       random: Math.random,
       window,
       navigator,
+      // 能力探测（如附件 sheet 的「拍照」项按 coarse pointer 显隐）显式注入，
+      // 而不是在模块里裸调全局 matchMedia——裸调在 node:test 下是 undefined，无法注入假实现。
+      matchMedia: window.matchMedia?.bind(window),
       storage: localStorage,
       document,
       FileReader,
@@ -3034,7 +3051,7 @@ await ensureServerAddress();
         return; // 匹配成功，直接返回，避免生成重复聊天气泡
       }
 
-      const bubble = el(`<div class="msg-frame rounded-xl bg-user text-ink px-3 py-2 text-sm" data-testid="user-message"></div>`);
+      const bubble = el(`<div class="msg-frame m3-bubble-user px-3 py-2 text-sm" data-testid="user-message"></div>`);
       bubble.dataset.topLevel = '1'; // 未读角标锚点定位用：user_message 在线新建分支（离线占位分支在 send() 创建时已挂，这里走 matchedBubble 复用不重复创建）
       // 排队撤回/标记转正都按 clientMessageId 定位气泡（离线占位分支已挂，此处补齐在线新建分支）
       if (p.clientMessageId) bubble.dataset.clientMessageId = p.clientMessageId;
@@ -3329,7 +3346,9 @@ await ensureServerAddress();
         }
         lastStatusLinePayload = p;
         if (cliSummaryEl) cliSummaryEl.textContent = staleRateSegs.length ? t('statusline · CLI 暂不可用（额度沿用旧值）') : t('statusline · CLI 暂不可用');
-        cliStatusWrapEl?.classList.remove('hidden');
+        // 揭示改可见性开关：内容照渲（DOM 恒最新），显隐由本机偏好决定（默认关，2026-11-03 用户反馈碍事）。
+        // 不在 handler 里 early return 的好处：设置面板里打开开关时立刻看到最新内容，不必等下一次事件。
+        cliStatusWrapEl?.classList.toggle('hidden', !statuslinePref.get());
         return; // CLI owner 缺/陈旧时明确空缺，绝不把上一份 SDK/CLI 字段混进来（额度回落值是唯一例外，见上）
       }
 
@@ -3425,7 +3444,7 @@ await ensureServerAddress();
       // 一次性替换：清空旧节点 + append 非空行（row 对空行返回 null）
       cliStatusEl.textContent = '';
       linesArr.filter(Boolean).forEach(l => cliStatusEl.appendChild(l));
-      cliStatusWrapEl?.classList.remove('hidden'); // 揭示折叠包裹（默认折叠为 summary 摘要）
+      cliStatusWrapEl?.classList.toggle('hidden', !statuslinePref.get()); // 揭示折叠包裹（默认折叠为 summary 摘要）；显隐由本机偏好决定，默认关
     }
   };
 
@@ -3789,7 +3808,7 @@ await ensureServerAddress();
   // 靠 clientMessageId 精确认领转正，不会和回推撞成两条。两条路径共用构建器，字段漂开会认领失败。
   // ts 传 null：客户端时钟不可信。转正时由 settleAt 补服务端权威 ts。
   function buildPendingUserBubble({ text, outgoingAttachments, clientMessageId, pendingLabel }) {
-    const bubble = el(`<div class="msg-frame rounded-xl bg-user text-ink px-3 py-2 text-sm opacity-70 transition-opacity" data-testid="user-message"></div>`);
+    const bubble = el(`<div class="msg-frame m3-bubble-user px-3 py-2 text-sm opacity-70 transition-opacity" data-testid="user-message"></div>`);
     // 未读角标锚点定位用：未确认气泡是「user_message 到达前就存在」的顶层气泡创建点——
     // matchedBubble 命中时原地复用本节点（见 handle.user_message），不会重新创建，故必须在这里打标记。
     bubble.dataset.topLevel = '1';
@@ -4241,6 +4260,10 @@ await ensureServerAddress();
     haptic,
     onChange: updateSendButtonState,
     scheduleInsetResettle: () => scheduleInsetResettle(),
+    // 附件来源 sheet 的开合原语（M3 bottom sheet）：以值注入，模块不认识具体 sheet 元素。
+    // 不注入的话附件钮点了没反应——CSS 里 #attachModal 的可见性由 .sheet-open 驱动，只能走这两条。
+    openSheet,
+    closeSheet,
     // CLI 驾驶只读：拒加附件（否则进 tray 却发不出去）；说明走 showMirrorComposerHint。
     canAdd: () => {
       if (!mirrorReadonlySid) return true;
@@ -4613,11 +4636,11 @@ await ensureServerAddress();
         // 只改样式的话，辅助技术用户读到的是六个一模一样的按钮、无从知道当前在哪一档。
         tile.setAttribute('aria-pressed', isCurrent ? 'true' : 'false');
         if (isCurrent) {
-          tile.classList.add('ring-1', 'ring-accent', 'border-accent', 'bg-accent-wash/30');
+          tile.classList.add('ring-1', 'ring-accent', 'border-accent', 'bg-secondary-container');
           const title = tile.querySelector('.text-xs');
           if (title) title.classList.add('text-accent');
         } else {
-          tile.classList.remove('ring-1', 'ring-accent', 'border-accent', 'bg-accent-wash/30');
+          tile.classList.remove('ring-1', 'ring-accent', 'border-accent', 'bg-secondary-container');
           const title = tile.querySelector('.text-xs');
           if (title) title.classList.remove('text-accent');
         }
@@ -4675,11 +4698,11 @@ await ensureServerAddress();
         const tileVal = tile.dataset.level || '';
         const isCurrent = activeLevel === tileVal;
         if (isCurrent) {
-          tile.classList.add('ring-1', 'ring-accent', 'border-accent', 'text-accent', 'bg-accent-wash/30');
+          tile.classList.add('ring-1', 'ring-accent', 'border-accent', 'text-accent', 'bg-secondary-container');
           const title = tile.querySelector('.text-xs') || tile;
           title.classList.add('text-accent');
         } else {
-          tile.classList.remove('ring-1', 'ring-accent', 'border-accent', 'text-accent', 'bg-accent-wash/30');
+          tile.classList.remove('ring-1', 'ring-accent', 'border-accent', 'text-accent', 'bg-secondary-container');
           const title = tile.querySelector('.text-xs') || tile;
           title.classList.remove('text-accent');
         }
@@ -4767,7 +4790,7 @@ await ensureServerAddress();
         // UX-014：副文案增量信息，非「思考等级: low」同义反复
         const sub = effortLevelSubtitle(lv) || (isUltra ? t('xhigh + 多 agent · 最彻底') : '');
         const lvTile = el(`
-          <div data-level="${esc(lv)}" class="effort-tile p-2 rounded-xl border border-line bg-surface active:bg-sunk cursor-pointer transition-all ${active ? 'ring-1 ring-accent border-accent text-accent bg-accent-wash/30' : ''}">
+          <div data-level="${esc(lv)}" class="effort-tile p-2 rounded-xl border border-line bg-surface active:bg-sunk cursor-pointer transition-all ${active ? 'ring-1 ring-accent border-accent text-accent bg-secondary-container' : ''}">
             <div class="text-xs font-semibold ${active ? 'text-accent' : 'text-ink'}">${esc(lv)}</div>
             ${sub ? `<div class="text-xs text-ink-soft mt-0.5">${esc(sub)}</div>` : ''}
           </div>
@@ -4860,7 +4883,7 @@ await ensureServerAddress();
     syncDefaultsPillTitle();
     permModeSelect?.classList.remove('ring-1', 'ring-danger', 'text-danger');
     customPermGrid?.querySelectorAll('.perm-tile').forEach(tile => {
-      tile.classList.remove('ring-1', 'ring-accent', 'border-accent', 'bg-accent-wash/30');
+      tile.classList.remove('ring-1', 'ring-accent', 'border-accent', 'bg-secondary-container');
       tile.querySelector('.text-xs')?.classList.remove('text-accent');
     });
   }
@@ -4883,7 +4906,7 @@ await ensureServerAddress();
         if (pillModelText) pillModelText.textContent = t('CLI 模型未知');
         syncDefaultsPillTitle();
         customModelGrid?.querySelectorAll('.model-tile').forEach(tile => {
-          tile.classList.remove('ring-1', 'ring-accent', 'border-accent', 'text-accent', 'bg-accent-wash/30');
+          tile.classList.remove('ring-1', 'ring-accent', 'border-accent', 'text-accent', 'bg-secondary-container');
           const title = tile.querySelector('.text-xs');
           title?.classList.remove('text-accent');
           title?.classList.add('text-ink');
@@ -6336,6 +6359,20 @@ await ensureServerAddress();
       if (typeof Notification !== 'undefined' && Notification.permission === 'granted') void notifications.subscribe();
     },
   };
+  // ⑧-b 状态栏显隐：本地偏好（存 localStorage，换设备要重设）。默认关——2026-11-03 用户反馈
+  // 「下方那个 statusline 感觉有点碍事」。数据照收照渲（DOM 恒最新），只是不揭示包裹，
+  // 故在设置面板里打开开关时立刻可见最新内容，不必等下一次 status_line 事件。
+  const STATUSLINE_PREF_KEY = 'ccm_pref_statusline_visible';
+  const statuslinePref = {
+    get: () => {
+      try { return localStorage.getItem(STATUSLINE_PREF_KEY) === '1'; } catch { return false; }
+    },
+    set: (on) => {
+      try { localStorage.setItem(STATUSLINE_PREF_KEY, on ? '1' : '0'); } catch { /* 存不下也不崩 */ }
+      // 即时显隐：内容一直在渲，这里只翻可见性
+      cliStatusWrapEl?.classList.toggle('hidden', !on);
+    },
+  };
   // ⑨ 语言偏好：切换后写 storage + 提示刷新（不做响应式重渲——已翻译的静态串只在启动时应用一次，
   // 运行中改语言若不刷新，会停留在混杂态；appConfirm 走已有的确认 sheet，不新开一套 UI）。
   const langPref = {
@@ -6488,7 +6525,7 @@ await ensureServerAddress();
       sheet: 'generalSheet', body: 'generalSheetBody', scrim: 'generalScrim',
       dragZone: 'generalDragZone', close: 'generalClose', trigger: 'btnGeneralSettings',
     },
-    alerts, haptic, pushPreview, langPref,
+    alerts, haptic, pushPreview, langPref, statuslinePref,
     beforeOpen: () => { if (settings.isOpen()) settings.close(); },
     // 推送订阅状态每次打开重算：权限可能在系统设置里被改过，渲染一次会过期。
     onOpen: () => {
@@ -6757,7 +6794,10 @@ await ensureServerAddress();
       }
 
       // 行内容 (可滑动的前景卡片)
-      const rowContent = el(`<div class="row-content relative flex items-center gap-2 pl-6 pr-3 py-2.5 border-b border-line-soft transition-transform duration-200 cursor-pointer${active ? ' bg-accent-wash' : ' bg-surface'}" style="z-index: 20;" data-testid="session-row" data-session-id="${esc(s.id || '')}" data-instance-id="${esc(liveInst?.instanceId || '')}"></div>`);
+      // M3 list：行平铺 + 分隔线（line-soft 已映射 outline-variant，即 M3 list divider 色）；
+      // 选中态用 secondary-container 底（M3 list 的 selected 语义），不用 accent-wash 高亮块。
+      // 不做行圆角：本行是滑动删除的前景卡，圆角会与滑动层错位。
+      const rowContent = el(`<div class="row-content relative flex items-center gap-2 pl-6 pr-3 py-2.5 border-b border-line-soft transition-transform duration-200 cursor-pointer${active ? ' bg-secondary-container' : ' bg-surface'}" style="z-index: 20;" data-testid="session-row" data-session-id="${esc(s.id || '')}" data-instance-id="${esc(liveInst?.instanceId || '')}"></div>`);
       rowContent.dataset.terminalState = s.terminal || '';
       rowContent.dataset.terminalSource = s.terminalSource || '';
       rowContent.dataset.bgLocked = s.bgLocked ? '1' : '';
@@ -8034,7 +8074,7 @@ await ensureServerAddress();
       for (const s of recent) {
         const when = s.lastUsedAt ? new Date(s.lastUsedAt).toLocaleString() : t('时间未知');
         const item = el(`
-          <div class="dash-recent-item flex items-center justify-between p-3 bg-surface hover:bg-accent-wash/30 border border-line-soft hover:border-accent-bright/50 rounded-xl cursor-pointer transition-all active:scale-[0.99]">
+          <div class="dash-recent-item flex items-center justify-between p-3 bg-surface hover:bg-secondary-container border border-line-soft hover:border-accent-bright/50 rounded-xl cursor-pointer transition-all active:scale-[0.99]">
             <div class="flex-1 min-w-0 pr-3">
               <div class="dash-recent-title font-bold text-xs text-ink truncate"></div>
               <div class="text-[10px] text-ink-faint mt-1 flex items-center gap-1.5 min-w-0">
@@ -8521,7 +8561,7 @@ await ensureServerAddress();
       // 文本气泡（默认路径）
       const isUser = msg.role === 'user';
       const bubble = isUser
-        ? el(`<div class="msg-frame bg-user text-ink um rounded-xl px-3 py-2 text-sm msg-body" data-testid="user-message"></div>`)
+        ? el(`<div class="msg-frame m3-bubble-user um px-3 py-2 text-sm msg-body" data-testid="user-message"></div>`)
         : el(`<div class="msg-frame px-0.5 msg-body" data-testid="assistant-message"></div>`);
       if (msg.parentToolUseId || msg.isSidechain) {
         // 子 agent 正文：纯文本进卡，避免历史 markdown 二次污染嵌套
@@ -8749,17 +8789,20 @@ await ensureServerAddress();
     if (effective) setBusy(false);
     if (inputEl) inputEl.disabled = effective;
     refreshMirrorComposerCopy();
-    // 附件入口随只读锁：禁点 + 防「选了图却发不出」
-    if (btnAttach) {
-      btnAttach.disabled = effective;
-      btnAttach.classList.toggle('opacity-50', effective);
-      btnAttach.classList.toggle('cursor-not-allowed', effective);
-      // 与横幅/composer 提示同源的三档措辞（第三处文案面，改一处必须扫这三处）
-      btnAttach.title = effective
-        ? (mirrorWaitingFlag ? t('只读镜像：终端正在等你操作——点右侧续接可在手机继续')
-          : mirrorAutonomousFlag ? t('只读镜像：本会话自主循环执行中——点右侧续接可在手机继续')
-            : t('只读镜像：终端会话运行中——点右侧续接可在手机继续'))
-        : t('添加附件');
+    // 附件入口随只读锁：禁点 + 防「选了图却发不出」。选图钮同款——它与附件钮是同一条上传路径的两个入口，
+    // 只锁一个会留下「电脑端照样能选图」的漏口。
+    // 与横幅/composer 提示同源的三档措辞（第三处文案面，改一处必须扫这三处）
+    const attachTitle = effective
+      ? (mirrorWaitingFlag ? t('只读镜像：终端正在等你操作——点右侧续接可在手机继续')
+        : mirrorAutonomousFlag ? t('只读镜像：本会话自主循环执行中——点右侧续接可在手机继续')
+          : t('只读镜像：终端会话运行中——点右侧续接可在手机继续'))
+      : t('添加附件');
+    for (const btn of [btnAttach, btnImage]) {
+      if (!btn) continue;
+      btn.disabled = effective;
+      btn.classList.toggle('opacity-50', effective);
+      btn.classList.toggle('cursor-not-allowed', effective);
+      btn.title = btn === btnImage && !effective ? t('添加图片') : attachTitle;
     }
     // 镜像/解锁都走主按钮状态机：镜像时 mode=resume，解锁恢复 send/stop
     updateSendButtonState();

@@ -17,6 +17,10 @@ export function createAttachmentController(context, options = {}) {
     haptic = () => {},
     onChange = () => {},
     scheduleInsetResettle = () => {},
+    // 附件 sheet 的开合原语：与 approval-questions.js 同款以「值」注入，模块自己不认识任何具体 sheet。
+    // 不注入时退化成 no-op（单测可只验 addFiles/payload 而不必拉起 DOM 弹层）。
+    openSheet = () => {},
+    closeSheet = () => {},
     // 返回 false 则拒绝添加（如 CLI 驾驶只读）；可在回调内自行 addBar 说明。
     canAdd = () => true,
   } = options;
@@ -228,20 +232,85 @@ export function createAttachmentController(context, options = {}) {
 
   function bind() {
     const doc = deps.document || globalThis.document;
-    if (dom.btnAttach && dom.fileInput) {
-      dom.btnAttach.onclick = () => {
-        if (canAdd() === false) return;
-        dom.fileInput.click();
-      };
-    }
-    if (dom.fileInput) {
-      dom.fileInput.onchange = async () => {
-        const files = [...dom.fileInput.files];
-        dom.fileInput.value = '';
+
+    // 三个隐藏 input 共用的收口：清空 value（否则连选同一文件不触发 change）、
+    // 关键盘重排、走同一套 addFiles（限额 / 缩略图 / 托盘 / canAdd 闸全部共用）。
+    const wireInput = (input) => {
+      if (!input) return;
+      input.onchange = async () => {
+        const files = [...input.files];
+        input.value = '';
         scheduleInsetResettle();
         await addFiles(files);
       };
+    };
+    wireInput(dom.fileInput);
+    wireInput(dom.imageInput);
+    wireInput(dom.cameraInput);
+
+    // 桌面选图钮：一键直达图片选择器，不绕 sheet。
+    // 与附件钮并存是有意的——附件钮给「完整三项菜单」，这颗给桌面高频场景「就想发张图」省一次点击。
+    // 可见性由 app.css 的 (hover:hover)+(pointer:fine) 媒体查询判，手机端恒隐藏。
+    if (dom.btnImage && dom.imageInput) {
+      dom.btnImage.onclick = () => {
+        if (canAdd() === false) return;
+        dom.imageInput.click();
+      };
     }
+
+    // 附件钮 → 打开 M3 来源选择 sheet（拍照 / 相册 / 上传文件）。
+    // 桌面端点附件钮也走 sheet：三项里「拍照」按能力隐藏（无后置摄像头），剩相册与上传文件——
+    // 与手机同一套交互，不必为两端各记一种行为。
+    if (dom.btnAttach && dom.attachModal) {
+      dom.btnAttach.onclick = () => {
+        if (canAdd() === false) return;
+        syncCameraAvailability();
+        openSheet(dom.attachModal);
+      };
+    }
+    // sheet 三项 + 取消：选完立即关 sheet 再开系统选择器。
+    // 顺序不能反——文件选择器会把页面切到后台，先开选择器再关 sheet 时，回来会看到 sheet 还挂着。
+    const pickAndClose = (input) => () => {
+      closeSheet(dom.attachModal);
+      if (canAdd() === false) return;
+      input?.click();
+    };
+    if (dom.attachOptCamera) dom.attachOptCamera.onclick = pickAndClose(dom.cameraInput);
+    if (dom.attachOptPhoto) dom.attachOptPhoto.onclick = pickAndClose(dom.imageInput);
+    if (dom.attachOptFile) dom.attachOptFile.onclick = pickAndClose(dom.fileInput);
+    if (dom.attachOptCancel) dom.attachOptCancel.onclick = () => closeSheet(dom.attachModal);
+    // 点遮罩关闭：只认遮罩本身，sheet 容器上的点击不关（否则点子元素冒泡会误关）
+    if (dom.attachModal) {
+      dom.attachModal.onclick = event => {
+        if (event.target === dom.attachModal) closeSheet(dom.attachModal);
+      };
+    }
+
+    // 「拍照」项按设备能力显隐：桌面就不摆这一项（没有手持相机语义，点了只会弹文件浏览器）。
+    //
+    // 判据用 `(hover:hover) and (pointer:fine)` 取反，与 app.css 里控制 #btnImage 显隐的那条
+    // **完全同一个媒体查询**。两处判据必须同源：一处说「这是桌面」、另一处说「这是手机」的话，
+    // 会出现桌面既有选图快捷钮、又在 sheet 里摆着「拍照」这种自相矛盾的组合。
+    //
+    // 【为什么不用 navigator.maxTouchPoints 兜底】实测 Windows headless Chromium 桌面下
+    // maxTouchPoints = 10（系统上报触屏能力），而 matchMedia('(pointer:coarse)') 为 false。
+    // 用 `coarse || maxTouchPoints>0` 会把桌面误判成有相机，「拍照」项在电脑上凭空出现。
+    // 探测异常时按「没有相机」处理：摆一个点了不拍照的按钮比不摆更糟（不做假按钮）。
+    function syncCameraAvailability() {
+      const opt = dom.attachOptCamera;
+      if (!opt) return;
+      // 默认按「桌面」处理（隐藏拍照项）：探测不到能力时宁可少摆一项，
+      // 也不要摆一个点了不拍照的按钮——后者更糟（不做假按钮）。
+      let isDesktop = true;
+      try {
+        const mm = deps.matchMedia;
+        if (typeof mm === 'function') {
+          isDesktop = mm('(hover: hover) and (pointer: fine)').matches === true;
+        }
+      } catch { /* 探测异常：保留上面的默认值（按桌面隐藏） */ }
+      opt.classList.toggle('hidden', isDesktop);
+    }
+
     dom.input?.addEventListener('paste', event => {
       const images = pickPasteImageFiles(event.clipboardData);
       if (!images.length) return;

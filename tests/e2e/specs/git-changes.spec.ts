@@ -2,7 +2,7 @@
 // 顶部 pill → 工作区面板「改动」tab（git:status / git:diff mock）
 
 import { test, expect } from '@playwright/test';
-import { expectNoBrowserErrors, gotoMock, sendChatMessage } from '../../helpers/playwright';
+import { enableStatuslinePref, expectNoBrowserErrors, gotoMock, sendChatMessage } from '../../helpers/playwright';
 import { openSessionsSidebar } from '../../helpers/sidebar-ui';
 
 test.describe('P0 日常零 token Mock UI 回归', () => {
@@ -101,6 +101,8 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
   // true，composer 于是显示，状态栏就露出来了。那条路需要 mock 支持「懒开 FRESH 后立刻摧毁」才构造
   // 得出来，当前没有；真要动手改的人，别把这两道保险当重复。
   test('P0-GIT-5 会话已中断表面：状态栏与 pill 都不得留在屏上', async ({ page }) => {
+    // 状态栏默认关（本机偏好）：本用例的前提断言是「会话里状态栏确实渲染着」，先开 pref
+    await enableStatuslinePref(page);
     await gotoMock(page);
     await expect(page.locator('#cliStatusWrap')).toBeVisible(); // 前提：会话里状态栏确实渲染着
 

@@ -34,6 +34,8 @@ export function createSettingsController(context, {
   // 独立于 alerts（那是本地提示音/震动，不涉网络）；duck-typed 最小接口，settings.js 不需要认识整个
   // notifications 控制器。
   pushPreview = { get: () => false, set: () => {} },
+  // ⑧-b 状态栏显隐：get/set 由 app.js 注入（localStorage + set 时即时翻可见性）。默认关。
+  statuslinePref = { get: () => false, set: () => {} },
   // ⑨ 语言偏好：get/set 由 app.js 注入；set 里写 storage + 提示刷新（不做响应式重渲，见 index.html 头注）。
   langPref = { get: () => 'zh', set: () => {} },
   autoBind = true,
@@ -114,6 +116,7 @@ export function createSettingsController(context, {
     if (dom.prefAlertVibrate) dom.prefAlertVibrate.checked = !!preferences.vibrate;
     if (dom.prefAlertForeground) dom.prefAlertForeground.checked = !!preferences.foregroundComplete;
     if (dom.prefPushPreview) dom.prefPushPreview.checked = !!pushPreview.get();
+    if (dom.prefStatusline) dom.prefStatusline.checked = !!statuslinePref.get();
     renderLangOptions();
   }
 
@@ -305,6 +308,9 @@ export function createSettingsController(context, {
     bindToggle(dom.prefAlertForeground, 'foregroundComplete');
     if (dom.prefPushPreview) {
       dom.prefPushPreview.onchange = () => pushPreview.set(dom.prefPushPreview.checked);
+    }
+    if (dom.prefStatusline) {
+      dom.prefStatusline.onchange = () => statuslinePref.set(dom.prefStatusline.checked);
     }
     if (dom.prefLangGroup) {
       dom.prefLangGroup.onclick = (e) => {

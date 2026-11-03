@@ -65,6 +65,17 @@ project's own code is licensed under Apache-2.0 (see root `LICENSE`); that does 
 - 许可全文 / Full text: https://openfontlicense.org
 - 来源 / Source: https://github.com/adobe-fonts/source-serif
 
+## Material Web — `material-web.bundle.js`
+
+- 版本 / Version: 2.5.0（esbuild 0.28.2 打包为单文件 ESM，target es2020、minify；sha256 前 16 位 `cf9da253065bf58c`）
+- 版权 / Copyright: © 2021 Google LLC and contributors
+- 许可 / License: Apache-2.0 (SPDX: `Apache-2.0`)
+- 许可全文 / Full text: https://github.com/material-components/material-web/blob/main/LICENSE
+- 来源 / Source: https://github.com/material-components/material-web
+- 说明 / Note: 上游处于维护模式（README 自述 "maintenance mode pending new maintainers"），
+  本仓库只 vendor 打包产物、不依赖其后续更新；组件自注册 custom element，主题经
+  `--md-sys-color-*` / `--md-ref-typeface-*` CSS 变量注入（见 app/public/css/app.css）。
+
 ---
 
 ## 许可证全文 / Full license texts

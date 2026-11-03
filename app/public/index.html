@@ -258,7 +258,7 @@
 
   <!-- 权限审批弹窗（底部 sheet） -->
   <div id="permModal" class="hidden fixed inset-0 z-40 bg-black/40 flex items-end" role="dialog" aria-modal="true" aria-label="权限请求">
-    <div class="w-full bg-surface rounded-t-2xl p-4 safe-bottom" style="box-shadow:var(--shadow-pop);border-top:3px solid var(--accent)">
+    <div class="m3-sheet w-full p-4 safe-bottom">
       <div class="sheet-handle"></div>
       <div class="text-accent-deep font-semibold mb-1">⚠️ 权限请求</div>
       <div id="permTool" class="font-mono text-sm mb-1 text-ink"></div>
@@ -269,7 +269,7 @@
       <!-- UX-001：ExitPlanMode 走 markdown（msg-body）；普通命令 mono 纯文本。由 showNextPerm 切换 class。 -->
       <div id="permInput" class="font-mono bg-sunk rounded-md p-2 text-xs overflow-x-auto max-h-48 overflow-y-auto mb-3 text-ink-soft whitespace-pre-wrap break-words"></div>
       <label class="flex items-center gap-2 text-xs text-ink-soft mb-3">
-        <input type="checkbox" id="permAlways" style="accent-color:var(--accent)">总是允许此类操作
+        <input type="checkbox" id="permAlways" style="accent-color:var(--accent);width:18px;height:18px">总是允许此类操作
       </label>
       <!-- 「永久」档：仅当 CLI 给出了会落盘的规则（permission_request.persistDestinations）时才出现。
            默认停在「仅本会话」——这是改版前的唯一行为，不勾任何东西就不该悄悄多出持久授权。
@@ -277,10 +277,10 @@
            说小了会让用户批准一个他本不会批准的授权。 -->
       <div id="permPersistWrap" class="hidden ml-6 mt-1 text-xs" data-testid="perm-persist-wrap">
         <label class="flex items-center gap-1.5 text-ink-soft cursor-pointer">
-          <input type="radio" name="permScope" value="session" checked style="accent-color:var(--accent)" data-testid="perm-scope-session">仅本会话
+          <input type="radio" name="permScope" value="session" checked style="accent-color:var(--accent);width:18px;height:18px" data-testid="perm-scope-session">仅本会话
         </label>
         <label class="flex items-center gap-1.5 text-ink-soft cursor-pointer mt-0.5">
-          <input type="radio" name="permScope" value="persist" style="accent-color:var(--accent)" data-testid="perm-scope-persist">永久 · <span id="permPersistLabel"></span>
+          <input type="radio" name="permScope" value="persist" style="accent-color:var(--accent);width:18px;height:18px" data-testid="perm-scope-persist">永久 · <span id="permPersistLabel"></span>
         </label>
         <div id="permPersistHint" class="text-[10px] text-ink-faint mt-0.5 leading-snug"></div>
       </div>
@@ -307,7 +307,7 @@
   <!-- 必须自带逃生舱：整屏 z-40 遮罩会盖住输入区「停止」按钮，不能只靠选选项才能走。
        跳过 = user:interrupt；Other = 对齐 CLI 自动提供的自由文本；multiSelect = 可多选。 -->
   <div id="questionModal" class="hidden fixed inset-0 z-40 bg-black/40 flex items-end" role="dialog" aria-modal="true" aria-label="需要你选择">
-    <div class="w-full bg-surface rounded-t-2xl p-4 safe-bottom max-h-[85vh] overflow-y-auto" style="box-shadow:var(--shadow-pop);border-top:3px solid var(--info)">
+    <div class="m3-sheet w-full p-4 safe-bottom max-h-[85vh] overflow-y-auto">
       <div class="sheet-handle"></div>
       <div class="text-info font-semibold mb-1">❓ 需要你选择</div>
       <div id="questionHeader" class="hidden text-xs text-ink-faint mb-1"></div>
@@ -330,7 +330,7 @@
   <!-- 通用确认弹窗：替代原生 confirm()，样式对齐 permModal；appConfirm() 接线在 app.js。
        会话彻底删除等不可逆操作也走这里（不再另开两级删除 sheet）。 -->
   <div id="confirmModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-end" role="dialog" aria-modal="true" aria-label="确认操作">
-    <div id="confirmSheet" class="w-full bg-surface rounded-t-2xl p-4 safe-bottom" style="box-shadow:var(--shadow-pop);border-top:3px solid var(--accent)">
+    <div id="confirmSheet" class="m3-sheet w-full p-4 safe-bottom">
       <div class="sheet-handle"></div>
       <div id="confirmTitle" class="text-accent-deep font-semibold mb-2"></div>
       <div id="confirmBody" class="text-sm text-ink-soft whitespace-pre-wrap break-words mb-4"></div>
@@ -344,7 +344,7 @@
 
   <!-- /rewind 面板：两步，对齐终端 /rewind（先选回到哪一轮之前，再选三个模式之一） -->
   <div id="rewindModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-end" role="dialog" aria-modal="true" aria-label="回退">
-    <div id="rewindSheet" class="w-full max-h-[80vh] bg-surface rounded-t-2xl flex flex-col safe-bottom" style="box-shadow:var(--shadow-pop);border-top:3px solid var(--accent)">
+    <div id="rewindSheet" class="m3-sheet w-full max-h-[80vh] flex flex-col safe-bottom">
       <div class="sheet-handle shrink-0"></div>
       <div class="px-4 pb-2 shrink-0">
         <div id="rewindTitle" class="text-accent-deep font-semibold">Rewind</div>
@@ -372,7 +372,7 @@
 
   <!-- 实时运行日志弹窗 (Slide-Up Console Drawer) -->
   <div id="consoleModal" class="hidden fixed inset-0 z-40 bg-black/40 flex items-end">
-    <div class="w-full h-[70vh] bg-gray-900/95 backdrop-blur-md rounded-t-2xl flex flex-col safe-bottom border-t border-gray-800" style="box-shadow:var(--shadow-pop)">
+    <div class="w-full h-[70vh] bg-gray-900/95 backdrop-blur-md rounded-t-[28px] flex flex-col safe-bottom border-t border-gray-800" style="box-shadow:var(--shadow-pop)">
       <div class="sheet-handle bg-gray-700 mt-3 shrink-0"></div>
       
       <!-- Drawer Header -->
@@ -415,7 +415,7 @@
        两个 tab 各自的工具行与 body 保留原 id——file-browser.js / git-changes.js 两个控制器只操作
        自己的那几个节点，换壳对它们透明；开合与 tab 切换权归 createWorkspacePanel 统一持有。 -->
   <div id="workspaceModal" class="hidden fixed inset-0 z-40 bg-black/40 flex items-end" role="dialog" aria-modal="true" aria-label="工作区">
-    <div class="w-full h-[85vh] bg-surface rounded-t-2xl flex flex-col safe-bottom" style="box-shadow:var(--shadow-pop)">
+    <div class="m3-sheet w-full h-[85vh] flex flex-col safe-bottom">
       <div class="sheet-handle mt-3 shrink-0"></div>
       <!-- tab 行：两个能力平铺可见，不再需要"先发现再选择" -->
       <div class="px-3 pb-2 flex items-center gap-2 border-b border-line shrink-0">
@@ -457,7 +457,7 @@
   <!-- 服务状态面板（NFR-15 可见性）：设置「访问与设备」组入口 → 两段式（基础/异常告警，判定化：裸计数留 /metrics）。
        数据走鉴权 service:status ack，面板开着时 5s 定时重拉；结构同 workspaceModal，开合走 openSheet/closeSheet。 -->
   <div id="serviceStatusModal" class="hidden fixed inset-0 z-40 bg-black/40 flex items-end" role="dialog" aria-modal="true" aria-label="服务状态">
-    <div class="w-full max-h-[85vh] bg-surface rounded-t-2xl flex flex-col safe-bottom" style="box-shadow:var(--shadow-pop)">
+    <div class="m3-sheet w-full max-h-[85vh] flex flex-col safe-bottom">
       <div class="sheet-handle mt-3 shrink-0"></div>
       <!-- 返回箭头而不是 ✕：这张面板是通用设置「🖥 宿主机」页切出去的第二层，退出语义是
            **退回上一级**。它与 generalSheet 同为 z-40、叠着会互相拦点击，所以打开时先收了设置
@@ -472,7 +472,7 @@
   </div>
 
   <div id="envConfigModal" class="hidden fixed inset-0 z-40 bg-black/40 flex items-end" role="dialog" aria-modal="true" aria-label="服务与配置">
-    <div class="w-full max-h-[85vh] bg-surface rounded-t-2xl flex flex-col safe-bottom" style="box-shadow:var(--shadow-pop)">
+    <div class="m3-sheet w-full max-h-[85vh] flex flex-col safe-bottom">
       <div class="sheet-handle mt-3 shrink-0"></div>
       <!-- 同 #serviceStatusBack：第二层面板，退出＝退回「🛠 行为与开关」页，不是关到首页 -->
       <div class="px-4 pb-2 flex items-center gap-2 border-b border-line shrink-0">
@@ -484,6 +484,52 @@
         <div id="envConfigHint" class="flex-1 min-w-0 text-[11px] text-ink-soft"></div>
         <button id="envConfigSave" type="button" class="hit-44 px-3 py-2 rounded-xl bg-accent text-white text-xs font-semibold active:scale-95 disabled:opacity-50">保存</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 附件来源选择 sheet（M3 bottom sheet）。点工具栏附件钮打开，三项各挂一个独立的隐藏 input：
+       accept/capture 组合决定系统弹什么选择器，走的是同一条 addFiles 上传路径（限额/缩略图/托盘共用）。
+       拍照不需要 CAMERA 权限：Capacitor WebView 的 isMediaCaptureSupported() 判据是
+       hasPermissions(CAMERA) || !hasDefinedPermission(CAMERA) —— manifest 不声明 CAMERA 时直接走
+       MediaStore.ACTION_IMAGE_CAPTURE 系统相机 intent，权限由相机 app 自己承担。
+       故这里刻意不加 <uses-permission CAMERA>：APK 少一个敏感权限，安装时不会吓用户。
+       拍照项仅移动设备可见（电脑无后置摄像头，#attachOptCamera 由 JS 按能力隐藏）。 -->
+  <div id="attachModal" class="fixed inset-0 z-50 bg-black/40 flex items-end" role="dialog" aria-modal="true" aria-label="添加附件">
+    <div id="attachSheet" class="m3-sheet w-full p-3 pt-0 safe-bottom">
+      <div class="m3-sheet-handle"></div>
+      <div id="attachSheetTitle" class="px-4 pt-4 pb-2 text-sm font-semibold text-on-surface">添加附件</div>
+      <!-- M3 List：md-list + md-list-item（leading icon 走 slot="start"，副标题走 supporting-text）。
+           组件自带 state layer / ripple / 焦点环，不再需要自绘 .m3-list-item + .m3-state。
+           三个选项的 id 保留在 host 元素上：JS 的 onclick 与 E2E 的 locator 都按 id 找，
+           custom element 的 host 事件正常冒泡，shadow DOM 不影响。 -->
+      <md-list id="attachList">
+        <md-list-item id="attachOptCamera" type="button" data-testid="attach-opt-camera">
+          <svg slot="start" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
+          </svg>
+          <div slot="headline">拍照</div>
+          <div slot="supporting-text">调用系统相机，拍完直接附上</div>
+        </md-list-item>
+
+        <md-list-item id="attachOptPhoto" type="button" data-testid="attach-opt-photo">
+          <svg slot="start" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A1.5 1.5 0 0021.75 19.5v-13A1.5 1.5 0 0020.25 5H3.75A1.5 1.5 0 002.25 6.5v13A1.5 1.5 0 003.75 21z" />
+          </svg>
+          <div slot="headline">相册</div>
+          <div slot="supporting-text">从设备相册挑图片</div>
+        </md-list-item>
+
+        <md-list-item id="attachOptFile" type="button" data-testid="attach-opt-file">
+          <svg slot="start" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+          <div slot="headline">上传文件</div>
+          <div slot="supporting-text">任意类型，单个最大 10MB</div>
+        </md-list-item>
+      </md-list>
+
+      <md-text-button id="attachOptCancel" data-testid="attach-opt-cancel">取消</md-text-button>
     </div>
   </div>
 
@@ -614,14 +660,41 @@
             class="flex-1 resize-none bg-transparent border-0 ring-0 outline-none focus:ring-0 focus:border-transparent px-2.5 py-2 text-sm text-ink placeholder-ink-faint max-h-36 min-h-[36px] leading-relaxed"></textarea>
         </div>
 
+        <!-- 三条独立的隐藏 input，对应附件 sheet 的三项：accept/capture 组合决定系统弹什么选择器。
+             刻意不合成一个 input 改属性——改 accept 后部分 Android WebView 不会重算已缓存的
+             选择器类型，复用同一个 input 会出现「点了拍照却弹出文件浏览器」。 -->
+        <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+        <input type="file" id="imageInput" accept="image/*" multiple class="hidden">
         <input type="file" id="fileInput" multiple class="hidden">
 
         <!-- Bottom Row: Toolbar
              会话档摘要 chip（模型 · 权限 · 思考）一条连着显示；点开即会话设置。
-             附件/发送钉在右侧 shrink-0，长摘要也挤不掉动作区。CLI 镜像态靠 placeholder + 发送位续接。
+             附件/选图钉在左侧、发送钉在右侧，两个动作区都 shrink-0，长摘要挤不掉它们。
+             CLI 镜像态靠 placeholder + 发送位续接。
              原三个独立 chip + 独立齿轮已收敛为此入口（#pillSession 是设置里复制 session id 的胶囊，别撞名）。 -->
         <div class="composer-toolbar flex items-center gap-1 w-full pt-1.5 border-t border-line-soft/30 px-1">
-          <!-- 可滚动 chip 区：摘要可能很长，横向滚；动作区不进滚动 -->
+          <!-- 左侧动作区：附件 / 选图——附件是输入的起点，放最左（2026-11-02 用户要求）
+               M3 icon button 组件（md-icon-button）：自带 40dp 触达区、圆形 state layer、ripple、
+               焦点环，取代自绘的 .m3-icon-button + .m3-state。icon 走 slot="icon"。
+               #btnImage 的桌面显隐仍由 app.css 的能力媒体查询控制（host 元素的 display 可被外部覆盖）。 -->
+          <div id="composerActionsLeft" class="composer-actions flex items-center gap-0.5 shrink-0">
+            <!-- E17：附件按钮 → 打开 M3 来源选择 sheet（拍照/相册/上传文件） -->
+            <md-icon-button id="btnAttach" title="添加附件" aria-label="添加附件">
+              <svg slot="icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+            </md-icon-button>
+
+            <!-- 选图按钮：仅电脑端可见（默认 hidden，桌面媒体查询里放开，见 app.css） -->
+            <md-icon-button id="btnImage" class="hidden" title="添加图片" aria-label="添加图片">
+              <svg slot="icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 5.5A2.5 2.5 0 015.5 3h13A2.5 2.5 0 0121 5.5v13a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 18.5v-13z" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.5 10a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM21 15.5l-5-5L5 21" />
+              </svg>
+            </md-icon-button>
+          </div>
+
+          <!-- 可滚动 chip 区：摘要可能很长，横向滚；两侧动作区不进滚动 -->
           <div id="composerChips" class="composer-chips flex items-center gap-1 min-w-0 flex-1 overflow-x-auto scrollbar-none">
             <div id="pillDefaults" class="status-pill-chip toolbar-pill" title="会话设置" data-testid="pill-defaults">
               <span id="pillModelText" class="pill-defaults-part pill-model">默认</span>
@@ -637,15 +710,8 @@
             <span id="composerDiscoverHint" class="hidden composer-discover-hint select-none" data-testid="composer-discover-hint" aria-hidden="true">/ · @</span>
           </div>
 
-          <!-- 钉死动作区：附件 / 发送——永不进横向滚动、不被长模型名挤没 -->
+          <!-- 右侧动作区：发送——永不进横向滚动、不被长模型名挤没 -->
           <div id="composerActions" class="composer-actions flex items-center gap-0.5 shrink-0">
-            <!-- E17：附件按钮——位置仍在发送左侧；视觉加大便于单手点（系统 file picker 不变） -->
-            <button id="btnAttach" class="flex items-center justify-center w-10 h-10 rounded-xl hover:bg-sunk active:scale-95 text-ink-soft shrink-0 transition-all" title="添加附件" aria-label="添加附件">
-              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-              </svg>
-            </button>
-
             <!-- 兼容性保留：隐藏的原 btnStop -->
             <button id="btnStop" class="hidden pointer-events-none w-0 h-0" style="display: none !important;"></button>
 
@@ -751,7 +817,7 @@
        在 #generalSheet 里——它们跟会话无关，不能跟着 composer 一起隐藏（本面板入口是底栏摘要
        chip #pillDefaults，在 #composerFooter 内，首页 syncComposerVisibility 会把整个
        footer 设 hidden）。 -->
-  <div id="settingsSheet" class="fixed inset-x-0 bottom-0 z-40 rounded-t-2xl bg-surface border-t-3 border-accent shadow-pop transform translate-y-full transition-transform duration-300 flex flex-col max-h-[85vh] overflow-hidden safe-bottom" style="border-top-color:var(--accent)" role="dialog" aria-modal="true" aria-labelledby="settingsSheetTitle">
+  <div id="settingsSheet" class="m3-sheet fixed inset-x-0 bottom-0 z-40 transform translate-y-full transition-transform duration-300 flex flex-col max-h-[85vh] overflow-hidden safe-bottom" role="dialog" aria-modal="true" aria-labelledby="settingsSheetTitle">
     <!-- 标题行：左侧拖关热区 + 右侧 CLI 重读（图标，不占内容区纵向） -->
     <div class="shrink-0 border-b border-line-soft bg-surface flex items-start">
       <div id="settingsDragZone" class="settings-drag-zone flex-1 min-w-0 select-none" aria-label="下拉关闭配置面板">
@@ -847,7 +913,7 @@
   <!-- 通用设置大底栏：入口在侧栏底部（#btnGeneralSettings），全局可达。
        与 #settingsSheet 同构，由同一个 createSettingsController 驱动（只换一组 DOM key）。
        分节按作用域：📱 本机（存 localStorage，换设备要重设）/ 🖥 主机（影响整台电脑上的所有会话）。 -->
-  <div id="generalSheet" class="fixed inset-x-0 bottom-0 z-40 rounded-t-2xl bg-surface border-t-3 border-accent shadow-pop transform translate-y-full transition-transform duration-300 flex flex-col max-h-[85vh] overflow-hidden safe-bottom" style="border-top-color:var(--accent)" role="dialog" aria-modal="true" aria-labelledby="generalSheetTitle">
+  <div id="generalSheet" class="m3-sheet fixed inset-x-0 bottom-0 z-40 transform translate-y-full transition-transform duration-300 flex flex-col max-h-[85vh] overflow-hidden safe-bottom" role="dialog" aria-modal="true" aria-labelledby="generalSheetTitle">
     <div id="generalDragZone" class="settings-drag-zone shrink-0 select-none" aria-label="下拉关闭设置">
       <div class="sheet-handle"></div>
       <!-- 标题栏在拖拽区内，但 settings.js 的 onDragPointerDown 会跳过 button/a/input——
@@ -899,28 +965,28 @@
                 <span class="font-semibold block">提示音</span>
                 <span class="text-xs text-ink-soft">模型说完 / 需要你审批或回答时短响一声</span>
               </span>
-              <input id="prefAlertSound" type="checkbox" class="w-4 h-4 accent-[var(--accent)] shrink-0" checked>
+              <input id="prefAlertSound" type="checkbox" class="w-[18px] h-[18px] accent-[var(--accent)] shrink-0" checked>
             </label>
             <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-line bg-surface active:bg-sunk text-xs text-ink cursor-pointer">
               <span class="min-w-0">
                 <span class="font-semibold block">震动</span>
                 <span class="text-xs text-ink-soft">完成/出错/需要你时震动（Android 有效）</span>
               </span>
-              <input id="prefAlertVibrate" type="checkbox" class="w-4 h-4 accent-[var(--accent)] shrink-0" checked>
+              <input id="prefAlertVibrate" type="checkbox" class="w-[18px] h-[18px] accent-[var(--accent)] shrink-0" checked>
             </label>
             <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-line bg-surface active:bg-sunk text-xs text-ink cursor-pointer">
               <span class="min-w-0">
                 <span class="font-semibold block">前台也弹系统通知</span>
                 <span class="text-xs text-ink-soft">页面开着时轮次完成也弹一条（默认只在后台弹）</span>
               </span>
-              <input id="prefAlertFgComplete" type="checkbox" class="w-4 h-4 accent-[var(--accent)] shrink-0" checked>
+              <input id="prefAlertFgComplete" type="checkbox" class="w-[18px] h-[18px] accent-[var(--accent)] shrink-0" checked>
             </label>
             <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-line bg-surface active:bg-sunk text-xs text-ink cursor-pointer">
               <span class="min-w-0">
                 <span class="font-semibold block">锁屏带内容预览</span>
                 <span class="text-xs text-ink-soft">锁屏通知带上问题 / 工具 / 任务摘要，而不只是「有新消息」</span>
               </span>
-              <input id="prefPushPreview" type="checkbox" class="w-4 h-4 accent-[var(--accent)] shrink-0">
+              <input id="prefPushPreview" type="checkbox" class="w-[18px] h-[18px] accent-[var(--accent)] shrink-0">
             </label>
             <!-- 没有订阅时预览开关是空转的（偏好跟着订阅存在服务端）。不禁用它——只说明，
                  免得用户勾了半天以为生效了。 -->
@@ -1058,6 +1124,17 @@
             <span class="text-[10px] font-normal text-ink-faint bg-sunk rounded px-1.5 py-0.5 ml-1" data-scope-chip="device">📱 仅此设备</span>
           </div>
           <div class="space-y-2">
+            <!-- 状态栏（#cliStatusWrap：git · ctx · 模型 · 额度那条折叠条）显隐开关。
+                 默认关（2026-11-03 用户反馈「下方那个 statusline 感觉有点碍事」）：
+                 不勾选时 handler 不揭示包裹，数据照收（展开态/复制等逻辑不变），只是不占屏。
+                 勾选即时生效，不必刷新——gate 在每次 status_line 事件的揭示点判。 -->
+            <label class="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-line bg-surface active:bg-sunk text-xs text-ink cursor-pointer">
+              <span class="min-w-0">
+                <span class="font-semibold block">状态栏</span>
+                <span class="text-xs text-ink-soft">输入框上方那条 git · 上下文占用 · 额度摘要</span>
+              </span>
+              <input id="prefStatusline" type="checkbox" class="w-[18px] h-[18px] accent-[var(--accent)] shrink-0">
+            </label>
             <!-- 三个自绘按钮，不是原生 <select>：这张 sheet 是 position:fixed + transform 的容器
                  （2026-09-11 Playwright 实测 #generalSheet 的 computed transform 恒为
                  matrix(1,0,0,1,0,0)——Tailwind 的 transform 类即便位移为 0 也不产出 none），
@@ -1152,6 +1229,10 @@
     </div>
   </div>
 
+  <!-- Material Web（M3 组件库，esbuild 打包的单文件 ESM，见 vendor/THIRD-PARTY-NOTICES.md）。
+       必须在 app.js 之前：module script 按文档顺序执行，app.js 里若引用 md-* 元素的行为
+       （如属性设置、事件监听）需要 custom element 已注册。组件自注册，主题经 --md-sys-color-* 注入。 -->
+  <script type="module" src="/vendor/material-web.bundle.js"></script>
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>

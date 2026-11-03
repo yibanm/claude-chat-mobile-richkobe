@@ -1,10 +1,12 @@
 // helpers: tests/helpers/playwright.ts
 
 import { test, expect } from '@playwright/test';
-import { ensureComposerReady, expectNoBrowserErrors, gotoMock, sendChatMessage, waitForIdle } from '../../helpers/playwright';
+import { ensureComposerReady, enableStatuslinePref, expectNoBrowserErrors, gotoMock, openGeneralPage, openGeneralSettings, sendChatMessage, waitForIdle } from '../../helpers/playwright';
 
 test.describe('P0 日常零 token Mock UI 回归', () => {
   test('P0-10 状态线、成本、模型与上下文信息（对齐 CLI statusline 文案）', async ({ page }) => {
+    // 状态栏默认关（本机偏好）：断言其内容前先开 pref，见 helper 头注
+    await enableStatuslinePref(page);
     await gotoMock(page);
 
     // 1. 发送 test:statusline，展开状态线详情。
@@ -38,7 +40,32 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await expectNoBrowserErrors(page);
   });
 
+  test('P0-10h 状态栏默认关（本机偏好）：会话里不占屏，设置面板打开开关即时显、关掉即时隐', async ({ page }) => {
+    // 2026-11-03 用户反馈「下方那个 statusline 感觉有点碍事」，改为默认关。
+    // 本用例钉住三件事：① 不开 pref 时即使有 status_line 事件也不揭示；② 设置面板里打开开关
+    // 即时显（内容一直在渲，只翻可见性，不必等下一次事件）；③ 关掉即时隐。
+    await gotoMock(page);
+    await sendChatMessage(page, 'test:statusline');
+    await waitForIdle(page);
+    await expect(page.locator('#cliStatusWrap')).toBeHidden();
+
+    // 打开通用设置 → 行为页 → 勾「状态栏」。
+    // 只调 openGeneralPage（它内部已含 openGeneralSettings）：连调两次会在侧栏 300ms
+    // 关闭过渡里撞第二次 #btnSessions 点击（subtree intercepts），2026-11-03 实测超时。
+    await openGeneralPage(page, 'behavior');
+    await page.locator('#prefStatusline').check();
+    await expect(page.locator('#cliStatusWrap')).toBeVisible();
+
+    // 关掉即隐；偏好落 localStorage，刷新后仍关（默认态）
+    await page.locator('#prefStatusline').uncheck();
+    await expect(page.locator('#cliStatusWrap')).toBeHidden();
+
+    await expectNoBrowserErrors(page);
+  });
+
   test('P0-10c 陈旧跨工作区状态线不会覆盖当前状态线', async ({ page }) => {
+    // 状态栏默认关（本机偏好）：断言其内容前先开 pref，见 helper 头注
+    await enableStatuslinePref(page);
     await gotoMock(page);
 
     await sendChatMessage(page, 'test:statusline');
@@ -61,6 +88,8 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
   // 数据源是 status_line 事件里现成的 git 段——无独立请求，故本用例复用 test:statusline 的 fixture
   // （git.changed = 3）。角标挂在顶栏而非状态栏内，须与 #cliStatus 的展开/折叠完全无关。
   test('P0-10f 顶栏工作区 pill 显示未提交改动数角标，切到无 git 的工作区即消失', async ({ page }) => {
+    // 状态栏默认关（本机偏好）：断言其内容前先开 pref，见 helper 头注
+    await enableStatuslinePref(page);
     await gotoMock(page);
 
     const badge = page.locator('[data-testid="top-context-changes"]');
@@ -84,6 +113,8 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
   // SDK 路径的额度陈值与"快照回落"是两件事：来源不同、文案不同。混用会把判断依据说错——
   // 用户看到"账号级旧值"会以为这是别处垫来的数，而实际上它是本会话自己的读数只是卡住了。
   test('P0-10g SDK 额度陈值标 (非实时) 且说得出多旧，不冒用"账号级旧值"文案', async ({ page }) => {
+    // 状态栏默认关（本机偏好）：断言其内容前先开 pref，见 helper 头注
+    await enableStatuslinePref(page);
     await gotoMock(page);
     await sendChatMessage(page, 'test:statusline-rate-stale');
     await waitForIdle(page);
@@ -96,6 +127,8 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
   });
 
   test('P0-10d CLI 镜像状态线标明唯一来源，快照不可用时不回退 SDK 陈值', async ({ page }) => {
+    // 状态栏默认关（本机偏好）：断言其内容前先开 pref，见 helper 头注
+    await enableStatuslinePref(page);
     await gotoMock(page);
 
     await sendChatMessage(page, 'test:cli-statusline');
@@ -116,6 +149,8 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
   });
 
   test('P0-10e CLI 状态暂不可用时，账号级额度快照回落仍可展示（明确标注非实时）', async ({ page }) => {
+    // 状态栏默认关（本机偏好）：断言其内容前先开 pref，见 helper 头注
+    await enableStatuslinePref(page);
     await gotoMock(page);
 
     // 1. cli-unavailable + 账号级额度快照回落（rate + rateFromSnapshot:true）：

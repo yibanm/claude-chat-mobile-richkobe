@@ -36,6 +36,18 @@ export async function waitUntilDisconnected(page: Page, timeout = 10_000) {
   await expect(page.locator('#connDotWrap')).toHaveAttribute('data-conn', 'offline', { timeout });
 }
 
+/**
+ * 状态栏（#cliStatusWrap）显隐是**本机偏好**，默认关（2026-11-03 用户反馈碍事）。
+ * 断言状态栏内容的 spec 必须在 gotoMock **之前**调本函数——pref 存 localStorage，
+ * 而 gotoMock 内部就 goto 了，addInitScript 晚于 goto 注册不生效。
+ * 键名与 app.js 的 STATUSLINE_PREF_KEY 逐字一致（改一边必改另一边）。
+ */
+export async function enableStatuslinePref(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('ccm_pref_statusline_visible', '1');
+  });
+}
+
 export async function gotoMock(page: Page) {
   captureBrowserErrors(page);
   await page.request.post('/__reset');

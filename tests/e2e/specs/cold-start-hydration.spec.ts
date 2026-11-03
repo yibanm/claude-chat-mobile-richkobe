@@ -1,12 +1,14 @@
 // helpers: tests/helpers/playwright.ts
 
 import { test, expect } from '@playwright/test';
-import { expectNoBrowserErrors, gotoMock } from '../../helpers/playwright';
+import { enableStatuslinePref, expectNoBrowserErrors, gotoMock } from '../../helpers/playwright';
 
 test.describe('P0 日常零 token Mock UI 回归', () => {
   test('P0-01 首屏冷启动、hydration 与连接状态', async ({ page }) => {
     // 1. 起始状态/假设：fresh browser context；打开 mock 页面，不依赖真实 Claude。
     // Mock 默认带可渲染会话 → 冷启动应显示输入条（与生产「有 viewing session」一致）。
+    // 状态栏默认关（本机偏好）：本用例断言其可见，先开 pref（须在 goto 前，见 helper 头注）
+    await enableStatuslinePref(page);
     await gotoMock(page);
 
     await expect(page).toHaveTitle(/Claude Chat Mobile/);

@@ -238,6 +238,7 @@ export const EN_DICT = Object.freeze({
   '思考强度': 'Thinking effort',
   '会话设置': 'Session settings',
   '添加附件': 'Add attachment',
+  '添加图片': 'Add image',
   // '推送未接通' 见顶部状态条段（Push offline）
   '推送未接通，查看推送状态': 'Push not connected — view push status',
   '发送': 'Send',

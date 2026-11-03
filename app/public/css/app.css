@@ -1,44 +1,153 @@
-/* ── Claude 设计 token（暖米白浅色单主题；改色只动此处，tw-config.js 把它们桥接成语义类）── */
+/* ── Material 3 设计 token（源色 = Claude 砖橙 #AE5238；改色只动此处，tw-config.js 把它们桥接成语义类）──
+   色值由 Google 官方 @material/material-color-utilities 0.3.0 的 HCT 算法从源色生成 tonal palette 后，
+   按 M3 color role 规范映射而来（0.4.0 的 ESM 入口有打包 bug，故钉 0.3.0）。生成是一次性的，
+   运行时零依赖。UI-001（tests/unit/contrast-tokens.test.mjs）程序化解析本文件做 WCAG AA 断言。
+
+   【为什么保留原有变量名】HTML 里几百处用的是 bg-surface / text-ink / border-line 这类语义类名，
+   tw-config.js 一处桥接到这些变量。只改值不改名 = 现有标记与 149 处 E2E class 断言零改动。
+   M3 的 role 名（primary / onPrimary / surfaceContainer…）作为新增 token 并存，供新组件直接用。
+
+   【canvas 不取 M3 的 background】M3 2021 规范里 background 与 surface 同色（浅色都 tone99），
+   照搬会让「页面底 vs 卡片」两层糊成一片。改用 surfaceContainerLow（tone98）作 canvas、
+   surface 保持 tone99——既是正统 M3 分层，又保住项目原有的层级感。 */
 :root {
   color-scheme: light dark;
-  --canvas:#F4F3EE; --surface:#FBFAF6; --surface-sunk:#EFEDE4;
-  --line:#E3E0D6; --line-soft:#ECEAE1;
-  --ink:#1F1E1B; --ink-soft:#54514A; --ink-faint:#73706A;
-  /* UI-001：accent 提至 AA 正文对比（白字 5.17 / 字面 4.95）；cta 专供实底白字按钮（深浅一致） */
-  --accent:#AE5238; --accent-deep:#8F422C; --accent-bright:#D97757; --accent-wash:#F0E4DD;
-  --cta:#AE5238;
-  --user-bubble:#ECE8DF; --info:#1B6FB3; --success:#3D8A50; --danger:#BC4334;
-  /* warning 加深：字面/surface 4.98（旧 #C77D33 = 3.14） */
+  /* M3 tonal 分层：canvas(tone98) < surface(tone99) ；sunk 用 surfaceContainer(tone96) */
+  --canvas:#FFF8F6; --surface:#FFFBFF; --surface-sunk:#FEF1ED;
+  --line:#E4D7D4; --line-soft:#F8EBE8;
+  --ink:#201A19; --ink-soft:#53433F; --ink-faint:#756B69;
+  /* UI-001：M3 primary(tone40) 白字对比 6.45、作文字色对 surface 6.30，均高于旧值（5.17 / 4.95）。
+     ink-faint 刻意取 tone46 而非 M3 默认的 outline(tone50)——tone50 在新 surface 上只有 4.37，
+     跌破 AA 4.5；tone46 = 5.04 达标，且与 ink-soft(9.14) 层次分明。 */
+  --accent:#9B442B; --accent-deep:#3B0900; --accent-bright:#BB5B40; --accent-wash:#FFDBD1;
+  --cta:#9B442B;
+  --user-bubble:#FFDBD1; --info:#1B6FB3; --success:#3D8A50; --danger:#BA1A1A;
+  /* warning 沿用加深值：字面/surface 5.08（AA 达标） */
   --warning:#9A5F22;
+
+  /* ── M3 color roles（新增，供 M3 组件直接引用；上面的语义名是其映射结果）── */
+  --m3-primary:#9B442B; --m3-on-primary:#FFFFFF;
+  --m3-primary-container:#FFDBD1; --m3-on-primary-container:#3B0900;
+  --m3-secondary:#77574E; --m3-on-secondary:#FFFFFF;
+  --m3-secondary-container:#FFDBD1; --m3-on-secondary-container:#2C150F;
+  --m3-tertiary:#6C5D2F; --m3-on-tertiary:#FFFFFF;
+  --m3-tertiary-container:#F6E1A6; --m3-on-tertiary-container:#231B00;
+  --m3-error:#BA1A1A; --m3-on-error:#FFFFFF;
+  --m3-error-container:#FFDAD6; --m3-on-error-container:#410002;
+  --m3-surface-container-lowest:#FFFFFF; --m3-surface-container-low:#FFF8F6;
+  --m3-surface-container:#FEF1ED; --m3-surface-container-high:#F8EBE8;
+  --m3-surface-container-highest:#F3E5E2;
+  --m3-on-surface:#201A19; --m3-on-surface-variant:#53433F;
+  --m3-surface-variant:#F5DED8; --m3-outline:#85736E; --m3-outline-variant:#E4D7D4;
+  --m3-inverse-surface:#362F2D; --m3-inverse-on-surface:#FBEEEB;
+  --m3-scrim:#000000;
+
+  /* ── M3 state layer：用 on-color 叠半透明，而非改底色（M3 的按压/悬停反馈机制）。
+     存 RGB 三元组再套 rgba()，不用 color-mix()——后者要 Chrome 111+，
+     而 APK 内嵌 WebView 的核心版本取决于用户手机，不能赌。 ── */
+  --m3-state-on-primary:255, 255, 255;
+  --m3-state-hover:.08; --m3-state-focus:.10; --m3-state-pressed:.12;
+
+  /* ── M3 shape scale（dp）。M3 规范：button = full(胶囊)、chip = small、card = medium(12)、
+     sheet/dialog = extra-large(28)。项目原有的 rounded-2xl 等 tailwind 类仍广泛使用（不受影响），
+     新 M3 组件统一从这里取值。 ── */
+  --radius-xs:4px; --radius-sm:8px; --radius-md:12px; --radius-lg:16px;
+  --radius-xl:28px; --radius-full:999px;
+
+  /* ── M3 elevation。M3 规范是纯黑阴影，这里换成项目原有的暖色投影基调（rgba(60,50,40)），
+     层级关系照 M3 五级递增——纯黑阴影在这套暖米白上会显脏。 ── */
+  --shadow-card:0 1px 2px rgba(60,50,40,.05), 0 4px 16px rgba(60,50,40,.06);   /* level 1 */
+  --shadow-lift:0 1px 2px rgba(60,50,40,.06), 0 2px 6px 2px rgba(60,50,40,.07); /* level 2 */
+  --shadow-pop:0 1px 3px rgba(40,32,24,.10), 0 8px 24px rgba(40,32,24,.14);     /* level 3 */
+  --shadow-drag:0 2px 3px rgba(40,32,24,.12), 0 6px 10px 4px rgba(40,32,24,.10);/* level 4 */
+
+  /* ── M3 typography scale（正文仍保留 serif 阅读态，见 --font-read；此处只定 UI 层）── */
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-read: "Source Serif 4", Georgia, Charter, "Songti SC", "Noto Serif SC", "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-  --radius-lg:0.875rem; --radius-md:0.625rem; --radius-sm:0.375rem;
-  --shadow-card:0 1px 2px rgba(60,50,40,.05), 0 4px 16px rgba(60,50,40,.06);
-  --shadow-pop:0 8px 32px rgba(40,32,24,.16);
-  --shadow-lift:0 4px 12px rgba(60,50,40,.08);
+  --m3-label-large:500 0.875rem/1.25rem var(--font-ui);
+  --m3-body-large:400 1rem/1.5rem var(--font-ui);
+  --m3-body-medium:400 0.875rem/1.25rem var(--font-ui);
+  --m3-title-large:400 1.375rem/1.75rem var(--font-ui);
+
+  /* ── Material Web 主题注入：把 --md-sys-color-* 映射到上面的 token，一处改色两套体系同步。
+     material-web 组件（md-icon-button / md-list-item / md-checkbox …）只认 --md-sys-color-*，
+     不映射的话它们会回落内置紫（#6750A4），与项目砖橙割裂。
+     字体同理：--md-ref-typeface-* 覆盖为系统字体栈——font-src 'self' 禁止引 Google Fonts CDN，
+     而 M3 默认 Roboto 在中文环境本就要回退系统字体，直接声明栈更诚实。 ── */
+  --md-ref-typeface-plain: var(--font-ui);
+  --md-ref-typeface-brand: var(--font-ui);
+  --md-sys-color-primary: var(--m3-primary);
+  --md-sys-color-on-primary: var(--m3-on-primary);
+  --md-sys-color-primary-container: var(--m3-primary-container);
+  --md-sys-color-on-primary-container: var(--m3-on-primary-container);
+  --md-sys-color-secondary: var(--m3-secondary);
+  --md-sys-color-on-secondary: var(--m3-on-secondary);
+  --md-sys-color-secondary-container: var(--m3-secondary-container);
+  --md-sys-color-on-secondary-container: var(--m3-on-secondary-container);
+  --md-sys-color-tertiary: var(--m3-tertiary);
+  --md-sys-color-on-tertiary: var(--m3-on-tertiary);
+  --md-sys-color-tertiary-container: var(--m3-tertiary-container);
+  --md-sys-color-on-tertiary-container: var(--m3-on-tertiary-container);
+  --md-sys-color-error: var(--m3-error);
+  --md-sys-color-on-error: var(--m3-on-error);
+  --md-sys-color-error-container: var(--m3-error-container);
+  --md-sys-color-on-error-container: var(--m3-on-error-container);
+  --md-sys-color-background: var(--canvas);
+  --md-sys-color-on-background: var(--ink);
+  --md-sys-color-surface: var(--surface);
+  --md-sys-color-on-surface: var(--ink);
+  --md-sys-color-surface-variant: var(--m3-surface-variant);
+  --md-sys-color-on-surface-variant: var(--ink-soft);
+  --md-sys-color-surface-container-lowest: var(--m3-surface-container-lowest);
+  --md-sys-color-surface-container-low: var(--m3-surface-container-low);
+  --md-sys-color-surface-container: var(--m3-surface-container);
+  --md-sys-color-surface-container-high: var(--m3-surface-container-high);
+  --md-sys-color-surface-container-highest: var(--m3-surface-container-highest);
+  --md-sys-color-outline: var(--m3-outline);
+  --md-sys-color-outline-variant: var(--m3-outline-variant);
+  --md-sys-color-inverse-surface: var(--m3-inverse-surface);
+  --md-sys-color-inverse-on-surface: var(--m3-inverse-on-surface);
+  --md-sys-color-scrim: var(--m3-scrim);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --canvas:#121211;
-    --surface:#1C1B1A;
-    --surface-sunk:#161514;
-    --line:#2E2C2A;
-    --line-soft:#242221;
-    --ink:#EEEEEC;
-    --ink-soft:#A3A19D;
-    --ink-faint:#7A7874;
-    --accent:#D97757;
-    --accent-deep:#F0E4DD;
-    --accent-bright:#E2886A;
-    --accent-wash:#2D231E;
-    --cta:#AE5238; /* 深色实底白字仍用深砖橙，勿用提亮的 accent */
-    --user-bubble:#282623;
-    /* UI-001：深色 danger/info 提亮一档；warning 保持可读（继承浅色过深会掉到 3.3） */
-    --danger:#E55D4C;
+    --canvas:#181210;
+    --surface:#201A19;
+    --surface-sunk:#120D0B;
+    --line:#3F3736;
+    --line-soft:#251E1C;
+    --ink:#EDE0DD;
+    --ink-soft:#D8C2BC;
+    --ink-faint:#998E8C;
+    --accent:#FFB5A0;
+    --accent-deep:#FFDBD1;
+    --accent-bright:#FFCFC3;
+    --accent-wash:#7C2D16;
+    --cta:#9B442B; /* 深色实底白字仍用深 primary(tone40)，勿用提亮的 accent（对齐原注释） */
+    --user-bubble:#2F2827;
+    /* UI-001：M3 error(tone80) 对 surface 10.11、info 4.97、白字/cta 6.45，全部高于旧值 */
+    --danger:#FFB4AB;
     --info:#3D8FD4;
     --warning:#D4A04A;
+    --m3-primary:#FFB5A0; --m3-on-primary:#5E1703;
+    --m3-primary-container:#7C2D16; --m3-on-primary-container:#FFDBD1;
+    --m3-secondary:#E7BDB2; --m3-on-secondary:#442A22;
+    --m3-secondary-container:#5D4038; --m3-on-secondary-container:#FFDBD1;
+    --m3-tertiary:#D9C58D; --m3-on-tertiary:#3B2F05;
+    --m3-tertiary-container:#534619; --m3-on-tertiary-container:#F6E1A6;
+    --m3-error:#FFB4AB; --m3-on-error:#690005;
+    --m3-error-container:#93000A; --m3-on-error-container:#FFB4AB;
+    --m3-surface-container-lowest:#0F0B09; --m3-surface-container-low:#181210;
+    --m3-surface-container:#201A19; --m3-surface-container-high:#2F2827;
+    --m3-surface-container-highest:#3B3331;
+    --m3-on-surface:#EDE0DD; --m3-on-surface-variant:#D8C2BC;
+    --m3-surface-variant:#53433F; --m3-outline:#A08C87; --m3-outline-variant:#53433F;
+    --m3-inverse-surface:#EDE0DD; --m3-inverse-on-surface:#362F2D;
+    /* 刻意不覆盖 --m3-state-on-primary：#btnSend 的底色是 --cta，深浅两态都是深砖橙 #9B442B，
+       state layer 必须恒叠白色才看得见反馈。深色下若按 M3 惯例换成 on-primary(94,23,3)，
+       深底叠深色 = 没有反馈。 */
   }
 }
 /* self-host 开源 serif（SIL OFL）——Claude 回复正文的“书卷阅读感”；中文无字形时由 --font-read 栈回退系统宋体 */
@@ -316,6 +425,74 @@ body.ccm-sheet-open #messages {
   display: none;
 }
 
+/* M3 用户气泡：secondary-container 底 + on-secondary-container 字（token 已映射 --user-bubble/--ink）。
+   形状按 M3 chat 模式：extra-large(28dp) 圆角 + 发送侧一个 4dp 小角（尾巴），
+   一眼区分用户/助手两侧。不用 tailwind 任意值类（rounded-[28px]）：气泡是 JS 动态注入元素，
+   Play CDN 对动态节点的任意值 JIT 是边缘路径（tw-config.js 头注），静态 class 才稳。 */
+.m3-bubble-user {
+  border-radius: var(--radius-xl) var(--radius-xl) var(--radius-xs) var(--radius-xl);
+  background: var(--user-bubble);
+  color: var(--m3-on-secondary-container);
+}
+/* 助手侧刻意保持无底文本（项目标志性的 serif 阅读态）：M3 chat 规范本身有无底变体，
+   且代码块底色是 surface-sunk，再套一层 container 底会让层级糊掉。不给助手侧加气泡底。 */
+
+/* ── M3 组件基元 ─────────────────────────────────────────────────────────── */
+
+/* state layer：M3 的按压/悬停反馈是「在容器上叠一层 on-color 半透明」，不是换底色。
+   用 ::before 覆盖层实现：容器 isolation:isolate 建独立层叠上下文，伪元素 z-index:-1
+   便绘制在「容器背景之上、内容之下」——既不盖住文字，也不需要给每个子元素单独提 z-index。
+   叠 rgba 而非 color-mix()：后者要 Chrome 111+，而 APK 内嵌 WebView 的核心版本取决于用户手机，不能赌。
+   【只给 #btnSend 自绘】md-icon-button / md-list-item 等组件自带 state layer 与 ripple，
+   不必也不该再叠一层（会双重反馈）。发送钮是原生 <button>（其 className 被 JS 整体重写、
+   且 E2E 钉住三个类名，不能换成 md 组件），故这里手工补 M3 反馈。 */
+#btnSend {
+  position: relative;
+  isolation: isolate;
+  -webkit-tap-highlight-color: transparent;
+}
+#btnSend::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: rgb(var(--m3-state-on-primary)); /* 高频态是 bg-cta 实底深砖橙 + 白箭头，叠白色才看得见反馈 */
+  opacity: 0;
+  transition: opacity .15s cubic-bezier(.2, 0, 0, 1); /* M3 emphasized decelerate */
+  pointer-events: none;
+}
+@media (hover: hover) {
+  #btnSend:hover::before { opacity: var(--m3-state-hover); }
+}
+#btnSend:active::before { opacity: var(--m3-state-pressed); }
+#btnSend:focus-visible::before { opacity: var(--m3-state-focus); }
+#btnSend:focus-visible { outline: none; }
+/* 禁用态（空闲无内容）整钮已 opacity-60 且不可点，叠 state layer 只会让灰钮按压时忽明忽暗 */
+#btnSend:disabled::before { opacity: 0; }
+
+/* M3 bottom sheet：container 用 surface-container-low，顶部 extra-large(28dp) 圆角。
+   刻意不带项目旧 sheet 那条 3px accent 顶边——M3 的 sheet 靠 elevation + 圆角表达层级，
+   加彩色描边是 M2 的做法，与新 shape/elevation 体系冲突。 */
+.m3-sheet {
+  background: var(--m3-surface-container-low);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--shadow-pop);
+}
+/* drag handle：M3 规范 32×4dp、圆角 2dp、outline-variant 色。
+   项目原有 .sheet-handle 是另一套（更窄更淡），M3 sheet 单独用这个，不动旧 sheet 的观感。 */
+.m3-sheet-handle {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--m3-outline-variant);
+  margin: 12px auto 0;
+}
+
+/* M3 list item / icon button 的自绘版本已删：附件 sheet 与 composer 按钮改用
+   @material/web 的 md-list-item / md-icon-button 组件（自带 56dp 行高、leading icon、
+   state layer、ripple、焦点环），自绘 CSS 是死代码。组件的主题经 --md-sys-color-* 注入（见 :root）。 */
+
 /* 底栏工具条：chip 区可滚，动作区不缩 */
 .composer-toolbar {
   min-width: 0;
@@ -330,6 +507,14 @@ body.ccm-sheet-open #messages {
   position: relative;
   z-index: 1;
   background: var(--surface);
+}
+/* 选图按钮只在有精确指针的设备（电脑浏览器）上出现。
+   判据用能力而非宽度：(hover:hover)+(pointer:fine) 对「电脑 / 手机」的区分不随窗口尺寸变化，
+   而 min-width 断点会在用户把电脑窗口拉窄时把按钮变没——窄窗口的电脑照样能挑图片。
+   手机与 APK 壳内恒不满足这两个条件；那里的附件钮已能调起相册，不必再占窄屏空间。
+   HTML 里默认带 .hidden（display:none），这里用 id 选择器覆盖——id 恒胜过 class，不依赖样式顺序。 */
+@media (hover: hover) and (pointer: fine) {
+  #btnImage { display: flex; }
 }
 /* UX-019：空态档位变更时胶囊短暂高亮（替代消息区系统条） */
 @keyframes status-pill-flash {
@@ -602,25 +787,9 @@ header {
     width: 100%;
     padding: 0.5rem !important;
   }
-  /* 回形针放大：40×40 视觉 + 既有 .chat-input-pill button::after 扩热区；位置仍在发送左侧 */
-  #btnAttach {
-    position: relative !important;
-    transform: none !important;
-    width: 40px !important;
-    height: 40px !important;
-    border-radius: 0.75rem !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: var(--ink-soft) !important;
-  }
-  #btnAttach svg {
-    width: 1.5rem !important;
-    height: 1.5rem !important;
-  }
-  #btnAttach:active {
-    transform: scale(0.92) !important;
-  }
+  /* 移动端不再需要 #btnAttach 的尺寸/圆角覆盖：它已是 md-icon-button 组件，
+     默认即 40dp 触达区 + 圆形 + 透明底 + state layer（M3 规范值）。
+     旧覆盖块（border-radius/transform/background 一串 !important）与组件默认冗余，删。 */
   #input {
     min-height: 32px !important;
     padding: 0.25rem 0.5rem !important;
@@ -710,23 +879,25 @@ header {
   }
 }
 
-/* ── 底栏弹层的统一滑入滑出过渡 (替代 hidden 硬切) ── */
-#permModal, #questionModal, #consoleModal, #confirmModal {
+/* ── 底栏弹层的统一滑入滑出过渡 (替代 hidden 硬切) ──
+   【白名单枚举，新增 sheet 必须同步加进这 4 组】openSheet() 只负责增删 .sheet-open 类，
+   真正让它可见的是这里的规则。漏加的症状是：类加上了、元素却仍 hidden —— 一个点了没反应的死按钮。 */
+#permModal, #questionModal, #consoleModal, #confirmModal, #attachModal {
     visibility: hidden;
     pointer-events: none;
     opacity: 0;
     transition: opacity .25s ease, visibility .25s ease;
   }
-  #permModal > div, #questionModal > div, #consoleModal > div, #confirmModal > div {
+  #permModal > div, #questionModal > div, #consoleModal > div, #confirmModal > div, #attachModal > div {
     transform: translateY(100%);
     transition: transform .3s cubic-bezier(0.16, 1, 0.3, 1);
   }
-  #permModal.sheet-open, #questionModal.sheet-open, #consoleModal.sheet-open, #confirmModal.sheet-open {
+  #permModal.sheet-open, #questionModal.sheet-open, #consoleModal.sheet-open, #confirmModal.sheet-open, #attachModal.sheet-open {
     visibility: visible;
     pointer-events: auto;
     opacity: 1;
   }
-  #permModal.sheet-open > div, #questionModal.sheet-open > div, #consoleModal.sheet-open > div, #confirmModal.sheet-open > div {
+  #permModal.sheet-open > div, #questionModal.sheet-open > div, #consoleModal.sheet-open > div, #confirmModal.sheet-open > div, #attachModal.sheet-open > div {
     transform: translateY(0);
   }
   /* UX-003：审批 sheet 弹出后短暂防误触（过渡期按钮不可点） */
@@ -756,7 +927,10 @@ header {
     background: currentColor;
   }
 
-  /* ── 44px 物理触控热区扩充 ── */
+  /* ── 44px 物理触控热区扩充 ──
+     只对原生 button 生效。md-* custom element 不能用 host::after 扩热区：伪元素挂在 host 上，
+     点击落在 host，而组件的 click 监听在 shadow 内部的 <button> 上——扩出来的区域是死区。
+     组件的热区走它自己的主题 token（见下方 --md-icon-button-container-size）。 */
   .chat-input-pill button {
     position: relative;
   }
@@ -768,6 +942,11 @@ header {
     right: -6px;
     bottom: -6px;
   }
+  /* md-icon-button 不做 44px 热区扩充（2026-11-03 决策）：组件默认 40dp 即 M3 规范触达区，
+     内部 <button> 撑满 host，与旧自绘钮 +6px 伪元素热区的实际差异只有每边 2px。
+     曾尝试用主题 token 放大容器，实测 2.5.0 的公开 token 只有 state-layer-width/height
+     （那是 ripple 层不是容器），容器尺寸走各变体的私有 token（--_container-*，非公开 API、
+     版本间会变）——为 2px 依赖私有 token 不值。真机若反馈难点，再评估换 filled 变体或加 padding。 */
 
   /* ── 规则动画选中过渡 ── */
   .perm-tile {
