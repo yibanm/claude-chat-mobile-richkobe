@@ -76,7 +76,10 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     const manifestResponse = await page.request.get('/manifest.webmanifest');
     expect(manifestResponse.ok()).toBe(true);
     const manifest = await manifestResponse.json();
-    expect(manifest.name).toBe('Claude Chat Mobile');
+    // 本 fork 的对外应用名带 richkobe 定制后缀（用户指定的产品事实，见 manifest.webmanifest）。
+    // 断言写完整串而非包含关系：manifest 的 name 会进 PWA 安装标题与 APK 应用名，
+    // 被误改回上游名（或再混进别的后缀）都该当场红，不该放过。
+    expect(manifest.name).toBe('Claude Chat Mobile richkobe');
     expect(Array.isArray(manifest.icons)).toBe(true);
 
     for (const icon of manifest.icons) {

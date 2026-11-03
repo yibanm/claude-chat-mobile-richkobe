@@ -3,10 +3,12 @@
 // SDK 消息 → agent:event 统一信封，seq 单调 + 环形缓冲。
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { randomUUID } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import * as interactionLog from './interaction-log.js';
 import * as diagLog from './diag-log.js';
 import { sanitize } from '../shared/sanitizer.js';
 import { sdkChildEnv } from '../shared/child-env.js';
+import { joinWinCommand } from '../shared/win-quote.js';
 import { truncate, stringify, redactBase64, TOOL_SUMMARY_CAP } from '../shared/tool-summary.js';
 import { AGENT_EVENT_TYPES } from '../shared/protocol.js';
 import { parseLocalCommandOutput, WEB_BARE_SLASH_RE } from '../shared/local-command.js';
@@ -214,6 +216,29 @@ function filterSafeResolvedEnv(env) {
 // 只留尾部：报错行总在最末，长跑会话的 stderr 不会把内存撑大。4000 字符足够容纳 CLI 的多行报错。
 const STDERR_TAIL_MAX = 4000;
 
+// Windows 专属的 CLI 子进程 spawn（供 buildAgentQueryOptions 的 spawnClaudeCodeProcess 用）。
+//
+// 为什么必须经 cmd.exe /c：SDK 默认对 pathToClaudeCodeExecutable 做无 shell 的 spawn，
+// 而 Node 在 Windows 上自 CVE-2024-27980 修复后对 .cmd/.bat 直接抛 EINVAL（errno -4071）。
+// 本机的 claude 是 clawgod 包装的 claude.cmd，正踩这条。cmd.exe /c 是 .cmd 的原生解释器，
+// 语义与「双击/终端里敲 claude」完全一致。
+//
+// 参数传递形态：把 command + args 拼成一条已引号化的命令行，作为 /c 的**单个**后续参数。
+// 不能把 args 拆成 cmd.exe 的多个 argv——cmd 会把 /c 之后的每个 argv 当独立 token 重新
+// 解析，--settings 的 JSON 值（内含空格与双引号）会被拆散。引号化规则见 shared/win-quote.js。
+//
+// 转发的三样：env（SDK 已按 options.env 合成好）、cwd、signal（SDK 的转发信号，语义是
+// 「stdin EOF + 宽限窗之后才 abort」，接上它中断链路才与默认路径一致）。stderr 不接：
+// options.stderr 回调要生效需 SDK 把 stdio[2] 设成 pipe，那由 SDK 依据是否传了 stderr 回调
+// 决定，与本钩子无关；钩子返回的 ChildProcess 的 stderr 默认继承，行为与默认路径相同。
+export function spawnClaudeCodeOnWindows(opts) {
+  return spawn('cmd.exe', ['/c', joinWinCommand([opts.command, ...opts.args])], {
+    env: opts.env,
+    cwd: opts.cwd,
+    signal: opts.signal,
+  });
+}
+
 // SDK query options 纯函数（可单测）：集中「与 CLI 对齐的桥接开关」，避免 start() 内联大对象难测。
 // agentProgressSummaries：默认开——子 agent ~30s AI 进度写 task_progress.summary，刷新 lastSeenAt + 横幅文案；
 // 关：CCM_AGENT_PROGRESS_SUMMARIES=0（省 fork token；静默期只靠 tool description 变化）。
@@ -263,6 +288,13 @@ export function buildAgentQueryOptions(session, env = process.env) {
     settingSources: ['user', 'project', 'local'],
     systemPrompt: { type: 'preset', preset: 'claude_code' },
     env: { ...sdkChildEnv(env), ...filterSafeResolvedEnv(session.resolvedEnv) },
+    // Windows 上 SDK 默认 spawn 的是 pathToClaudeCodeExecutable 指向的 .cmd/.bat（本机是
+    // clawgod 包装的 claude.cmd），而 Node 自 CVE-2024-27980 修复后禁止无 shell 直接 spawn
+    // .cmd/.bat（spawn EINVAL，errno -4071）——macOS/Linux 的 claude 是无扩展名脚本不受影响，
+    // 故这是纯 Windows 缺口。SDK 的官方解法是 spawnClaudeCodeProcess 钩子：经 cmd.exe /c
+    // 中转（.cmd 本就是 cmd 脚本，语义不变），并原样转发 SDK 的 env/cwd/signal。
+    // 非 win32 不注入该键 = 走 SDK 默认路径，mac/Linux/CI 行为零变化。
+    ...(process.platform === 'win32' ? { spawnClaudeCodeProcess: spawnClaudeCodeOnWindows } : {}),
     // 无条件收集（不受 LOG_STDERR 影响）：LOG_STDERR 管的是「要不要打到服务端日志」，
     // 而 resume 失败的原因识别任何部署下都需要。传了本 callback 才会让 SDK 把 stdio[2] 设成 pipe。
     stderr: data => {

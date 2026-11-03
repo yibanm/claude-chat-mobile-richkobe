@@ -52,7 +52,11 @@ export default defineConfig({
     // 就是那里），于是 `node tests/e2e/mock/server.js` 会被解析成 tests/infra/tests/e2e/…；
     // 而且 mock server 自身按仓库根的相对路径读 app/public/，cwd 错了即使找得到文件也跑不对。
     cwd: '../..',
-    command: `CCM_BUILD_NONCE=${buildNonce} PORT=${port} node tests/e2e/mock/server.js`,
+    // 环境变量走 webServer.env 而非命令内联：`CCM_BUILD_NONCE=x node …` 是 POSIX shell 语法，
+    // Windows 下 Playwright 用 cmd.exe 起进程，会把整段当成可执行名报「不是内部或外部命令」而 webServer 起不来。
+    // env 字段由 Playwright 跨平台注入子进程环境，Linux/CI 行为与内联完全一致，Windows 才能自起 mock server。
+    command: `node tests/e2e/mock/server.js`,
+    env: { CCM_BUILD_NONCE: buildNonce, PORT: String(port) },
     url: `${baseURL}/__ready?nonce=${buildNonce}`, // 仅本轮 nonce 匹配才 200，拒绝端口上的陈旧/他者进程
     timeout: 30_000,
     reuseExistingServer: false                     // TC-008：不盲目复用端口上任意进程；始终自起、身份经 nonce 校验

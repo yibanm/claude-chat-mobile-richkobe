@@ -80,7 +80,11 @@ for (const dir of TARGET_DIRS) {
   if (!existsSync(absDir)) continue;
   for (const file of walk(absDir)) {
     scanned.push(file);
-    const rel = file.slice(rootDir.length + 1);
+    // rel 归一成正斜杠：Windows 下 file 由 path.join 拼出、分隔符是反斜杠（tests\e2e\mock\server.js），
+    // 而下方 excludeDirs 的豁免判据硬编码正斜杠 startsWith(`${dir}/`)——不归一则豁免在 Windows 整体失效，
+    // mock 里合法的 delay 工具函数被误报（与 check-n1-assumptions 的 CRLF 同属一类平台兼容 bug）。
+    // CI（Linux）用正斜杠恒对，只有 Windows checkout 才暴露。归一后违规报告口径也统一成正斜杠。
+    const rel = file.slice(rootDir.length + 1).replace(/\\/g, '/');
     const text = readFileSync(file, 'utf8');
     const lines = text.split('\n');
     for (const { pattern, label, excludeDirs, find } of FORBIDDEN) {

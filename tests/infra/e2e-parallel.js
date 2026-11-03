@@ -51,6 +51,7 @@
 import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
+import { joinWinCommand } from '../../app/src/shared/win-quote.js';
 import { join } from 'node:path';
 
 const ROOT = join(import.meta.dirname, '..', '..');
@@ -194,15 +195,25 @@ function runShard({ files, index }, collected) {
     // 只有 package.json 一处真相，本文件不再持有第二份。74fc46e 把 playwright.config.ts 移进
     // tests/infra/ 时 test:e2e 补了 -c 而本文件漏了，Playwright 静默回落内建默认（workers 变
     // CPU/2、完全不起 webServer），266 条全红且没人知道——与其加闸比对两份路径，不如让第二份不存在。
-    const child = spawn('npm', ['run', 'test:e2e', '--', ...files, '--reporter=list'], {
-      cwd: ROOT,
-      env: {
-        ...process.env,
-        CCM_PLAYWRIGHT_PORT: String(BASE_PORT + index),
-        CCM_PLAYWRIGHT_SHARD_SUFFIX: `-shard${index + 1}`,
+    // 【Windows spawn 适配】`npm` 在 Windows 是 npm.cmd，而 Node 自 CVE-2024-27980 起禁止
+    // shell-less spawn .cmd/.bat（报 EINVAL errno -4071）。win32 下改用 cmd.exe /c 包裹，
+    // argv 用 win-quote.js 按 Windows 命令行约定引号化（与 app/src/agent/agent.js 的
+    // spawnClaudeCodeOnWindows 同一套解法，不重造）。非 win32 原样 spawn('npm', …)。
+    const isWin = process.platform === 'win32';
+    const npmArgs = ['run', 'test:e2e', '--', ...files, '--reporter=list'];
+    const child = spawn(
+      isWin ? 'cmd.exe' : 'npm',
+      isWin ? ['/c', joinWinCommand(['npm', ...npmArgs])] : npmArgs,
+      {
+        cwd: ROOT,
+        env: {
+          ...process.env,
+          CCM_PLAYWRIGHT_PORT: String(BASE_PORT + index),
+          CCM_PLAYWRIGHT_SHARD_SUFFIX: `-shard${index + 1}`,
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
       },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    );
     let buffered = '';
     // tee：原样转发给用户（保住实时进度与失败堆栈），同时留一份用来刮时长。
     child.stdout.on('data', d => { process.stdout.write(d); buffered += d; });

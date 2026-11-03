@@ -98,7 +98,11 @@ export function collectMarkers(rootDir) {
   const markers = [];
   const malformed = [];
   for (const rel of listSourceFiles(rootDir)) {
-    readFileSync(join(rootDir, rel), 'utf8').split('\n').forEach((line, index) => {
+    // split(/\r?\n/) 而非 split('\n')：Windows checkout 出 CRLF 行尾时，行末的 \r 会让
+    // MARKER_LINE_RE 的 $（无 m 标志只匹配串尾）失配——整份文件的 n1 标记一个都收不到，
+    // 已登记的 ID 全报 n1_marker_missing。CI（Linux/LF）恒绿，只有 Windows 才红。
+    // 用 \r?\n 分行使 line 本身不含 \r，下游两个正则都干净；对 LF 文件是 no-op，行号不变。
+    readFileSync(join(rootDir, rel), 'utf8').split(/\r?\n/).forEach((line, index) => {
       const hit = line.match(MARKER_LINE_RE);
       if (!hit) return;
       const body = hit[1].trim();

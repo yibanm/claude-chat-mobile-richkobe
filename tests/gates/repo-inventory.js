@@ -33,6 +33,10 @@ const ROOT_FILES = new Map([
   ['package.json', 'Project configuration'],
   ['package-lock.json', 'Generated lockfile'],
   ['app/server.js', 'Runtime entrypoint'],
+  // Windows 常驻入口（与 desktop/ 的 macOS 入口对称）：start-ccm.cmd 是桌面/手动入口，
+  // uninstall-ccm.cmd 是它的对称卸载；两者都只 call scripts/win-run.cmd，逻辑不复制。
+  ['start-ccm.cmd', 'Desktop integration'],
+  ['uninstall-ccm.cmd', 'Desktop integration'],
   ['eslint.config.js', 'Project configuration'],
   ['.claude/settings.json', 'Project configuration'],
   ['.dockerignore', 'Test configuration'],

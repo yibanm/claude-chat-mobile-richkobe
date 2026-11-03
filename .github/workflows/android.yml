@@ -161,10 +161,10 @@ jobs:
               exit 1
             fi
             if [ "$actual" != "$EXPECTED_SHA256" ]; then
-              echo "::error::签名指纹不是主密钥 richkobe（实际 $actual）——很可能是 debug key，禁止发版"
+              echo "::error::签名指纹不是主密钥 richkobe（实际 ${actual}）——很可能是 debug key，禁止发版"
               exit 1
             fi
-            echo "✓ 签名校验通过：SHA-256 与主密钥一致（$actual）"
+            echo "✓ 签名校验通过：SHA-256 与主密钥一致（${actual}）"
           else
             echo "::warning::未配置 CCM_KEYSTORE_BASE64，本次产物为 debug 签名——仅供本地试用，不会发布 Release"
           fi

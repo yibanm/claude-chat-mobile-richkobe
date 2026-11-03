@@ -139,8 +139,6 @@ const CLAIMS = [
     actual: () => /SDK_TAIL_ENTRYPOINTS = new Set\(\['sdk-ts'\]\)/.test(read('app/src/sessions/history.js')) ? "只认 sdk-ts" : '白名单已改', expect: '只认 sdk-ts' },
   { diagram: '06', shown: '前台判据是 client:presence（hidden !== true）',
     actual: () => /s\?\.data\?\.hidden !== true/.test(read('app/src/ops/notifications.js')) ? 'hidden !== true' : '判据已改', expect: 'hidden !== true' },
-  { diagram: '00', shown: 'claude-agent-sdk 0.3.278',
-    actual: () => JSON.parse(read('package.json')).dependencies['@anthropic-ai/claude-agent-sdk'], expect: '0.3.278' },
   { diagram: '00 / 01 / 08 / 11', shown: '共 31 种 type',
     // 同上：27 → 31（trusted_devices、session_recap、prompt_suggestion、rewind_applied）。
     actual: () => (/AGENT_EVENT_TYPES = Object\.freeze\(\[([\s\S]*?)\]\)/.exec(read('app/src/shared/protocol.js'))?.[1].match(/'[a-z_]+'/g) || []).length,
@@ -171,6 +169,11 @@ const CLAIMS = [
 // PINNED_REVISION 未动：那个字段只跟三张 architecture 图的重出走，手工改图 12 的文字不构成推进理由
 // （判据见上面 PINNED_REVISION 处的注释）。
 const PENDING_CLAIMS = [
+  // 2026-11-02：SDK 依赖按「更新内部组件」要求从 0.3.278 升到 0.3.316，架构图（图 00 等）规格源尚未重出。
+  // 暂存于此：代码侧仍守真实版本串（改成别的值会红），仅标记「图欠这次版本更新」。
+  // 重出图并推进 PINNED_REVISION 后，把 expect 改成图上新版本号并挪回 CLAIMS。
+  { diagram: '00', todo: 'claude-agent-sdk 版本升到 0.3.316',
+    actual: () => JSON.parse(read('package.json')).dependencies['@anthropic-ai/claude-agent-sdk'], expect: '0.3.316' },
 ];
 
 function git(args) {

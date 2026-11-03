@@ -46,7 +46,7 @@ for i in $(seq 1 50); do
 done
 
 if [ "$STATUS" != "completed" ]; then
-  echo "✘ 超时未结束（status=$STATUS）；请人工查看 https://github.com/$OWNER/$REPO/actions/runs/$RUN_ID"
+  echo "✘ 超时未结束（status=${STATUS}）；请人工查看 https://github.com/${OWNER}/${REPO}/actions/runs/${RUN_ID}"
   exit 1
 fi
 
@@ -90,7 +90,7 @@ fi
 DL=$(stat -c%s "$TMPZIP")
 echo "✓ zip 完整（EOCD + unzip -t 双校验，$DL bytes；API 声明 ${ART_SIZE:-?}）"
 if [ -n "${ART_SIZE:-}" ] && [ "$DL" -lt "$ART_SIZE" ]; then
-  echo "⚠️ 下载体积小于 API 声明值（$DL < $ART_SIZE）—— 按截断处理"
+  echo "⚠️ 下载体积小于 API 声明值（${DL} < ${ART_SIZE}）—— 按截断处理"
   exit 1
 fi
 
