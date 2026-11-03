@@ -65,7 +65,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await openWorkspaceSession(page, ANOTHER_WORKSPACE, 'Another App Concurrency');
     await expectSidebarClosed(page);
     await expect(page.locator('[data-testid="assistant-message"]').last()).toContainText('Another App Concurrency', { timeout: 10_000 });
-    await expect(page.locator('#pillPermText')).toContainText('Plan');
+    await expect(page.locator('#pillPermText')).toContainText('规划');
 
     await expectNoBrowserErrors(page);
   });
@@ -81,10 +81,10 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
 
     await expectSidebarClosed(page);
     await expect(page.locator('#topProjectText')).toContainText('another-react-project');
-    await expect(page.locator('#pillPermText')).toContainText('Plan');
+    await expect(page.locator('#pillPermText')).toContainText('规划');
     await expect(page.locator('#pillModelText')).toContainText('claude-3-opus[1m]');
     await expect(page.locator('#pillEffort')).toBeVisible();
-    await expect(page.locator('#pillEffortText')).toContainText('high');
+    await expect(page.locator('#pillEffortText')).toContainText('高');
 
     await expectNoBrowserErrors(page);
   });

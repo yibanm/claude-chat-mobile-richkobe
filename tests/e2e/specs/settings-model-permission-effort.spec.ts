@@ -22,7 +22,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await page.locator('.model-tile[data-model="claude-3-opus[1m]"]').click();
     await openSettingsSection(page, 'effort');
     await page.locator('.effort-tile[data-level="high"]').click();
-    await expect(page.locator('#pillPermText')).toContainText('Plan');
+    await expect(page.locator('#pillPermText')).toContainText('规划');
     await expect(page.locator('#modelInput')).toHaveValue('claude-3-opus[1m]');
     await expect(page.locator('#effortSelect')).toHaveValue('high');
     await closeSettings(page);
@@ -53,9 +53,9 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
 
     await page.locator('.perm-tile[data-mode="plan"]').click();
     await expect(page.locator('.perm-tile[data-mode="plan"]')).toHaveClass(/ring-accent/);
-    await expect(page.locator('#pillPermText')).toContainText('Plan');
+    await expect(page.locator('#pillPermText')).toContainText('规划');
     // 摘要 chip 连写
-    await expect(page.locator('#pillDefaults')).toContainText('Plan');
+    await expect(page.locator('#pillDefaults')).toContainText('规划');
 
     await expectNoBrowserErrors(page);
   });
@@ -203,7 +203,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await page.locator('#pillDefaults').click();
     await openSettingsSection(page, 'perm');
     await page.locator('.perm-tile[data-mode="plan"]').click();
-    await expect(page.locator('#pillPermText')).toContainText('Plan');
+    await expect(page.locator('#pillPermText')).toContainText('规划');
     await openSettingsSection(page, 'model');
     await page.locator('.model-tile[data-model="claude-3-opus[1m]"]').click();
     await openSettingsSection(page, 'effort');
@@ -266,15 +266,15 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     // 没指定（null）= CLI inherit：settings 里存了档就用存的。高亮 auto 就是替它声称「模型内置默认」，
     // 所以一块都不高亮，pill 如实报 CLI 此刻生效的档（mock 固定回 medium）。
     await expect(page.locator('.effort-tile.ring-accent')).toHaveCount(0);
-    await expect(page.locator('#pillEffortText')).toHaveText('medium · CLI 默认');
+    await expect(page.locator('#pillEffortText')).toHaveText('中 · CLI 默认');
 
     await page.locator('.effort-tile[data-level="high"]').click();
     await expect(page.locator('#effortSelect')).toHaveValue('high');
-    await expect(page.locator('#pillEffortText')).toHaveText('high');
+    await expect(page.locator('#pillEffortText')).toHaveText('高');
 
     await auto.click();
     await expect(auto).toHaveClass(/ring-accent/);
-    await expect(page.locator('#pillEffortText')).toHaveText('auto');
+    await expect(page.locator('#pillEffortText')).toHaveText('自动');
     await closeSettings(page);
 
     // auto 原样发（服务端映射成 effortLevel:null 控制请求）；折成 null 的话 mock 会回显 model-default
@@ -299,7 +299,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await page.locator('.model-tile[data-model="claude-3-opus[1m]"]').click();
     await openSettingsSection(page, 'effort');
     await page.locator('.effort-tile[data-level="high"]').click();
-    await expect(page.locator('#pillPermText')).toContainText('Plan');
+    await expect(page.locator('#pillPermText')).toContainText('规划');
     await expect(page.locator('#modelInput')).toHaveValue('claude-3-opus[1m]');
     await expect(page.locator('#effortSelect')).toHaveValue('high');
     // UX-019：empty-start 下档位变更不打居中系统条（胶囊承载）
@@ -376,15 +376,15 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await sendChatMessage(page, 'test:mirror-observed-settings');
     await expect(page.locator('#input')).toBeDisabled();
     await expect(page.locator('#pillModelText')).toHaveText('claude-opus-4-8[1m]');
-    await expect(page.locator('#pillPermText')).toHaveText('Auto');
-    await expect(page.locator('#pillEffortText')).toHaveText('max');
+    await expect(page.locator('#pillPermText')).toHaveText('自动');
+    await expect(page.locator('#pillEffortText')).toHaveText('最高');
 
     await page.locator('#btnSend').click();
     await expect(page.locator('#confirmModal')).toBeVisible();
     await page.locator('#confirmOk').click();
     await expect(page.locator('#input')).toBeEnabled();
     await expect(page.locator('#modelInput')).toHaveValue('claude-3-opus[1m]');
-    await expect(page.locator('#pillPermText')).toHaveText('Plan');
+    await expect(page.locator('#pillPermText')).toHaveText('规划');
     await expect(page.locator('#effortSelect')).toHaveValue('ultracode');
 
     await expectNoBrowserErrors(page);
@@ -651,7 +651,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
 
     // 起始档是 default（Manual）——必须切到**另一档**，点当前档不会产生任何变化，
     // 那样断言会在一个什么都没发生的页面上恒绿。
-    await expect(page.locator('#pillPermText')).toHaveText('Manual');
+    await expect(page.locator('#pillPermText')).toHaveText('手动');
     await openSessionSettings(page);
     await openSettingsSection(page, 'perm');
     const target = page.locator('.perm-tile[data-mode="acceptEdits"]');
@@ -660,9 +660,9 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await closeSettings(page);
 
     // 三处之二：底栏 pill 用 CLI 英文契约名（不是「接受编辑」这类译名）
-    await expect(page.locator('#pillPermText')).toHaveText('Accept edits');
+    await expect(page.locator('#pillPermText')).toHaveText('自动接受编辑');
     // 三处之三：消息流里留痕。文案同样是契约名，回看时能对上 CLI。
-    await expect(page.locator('#messages')).toContainText('权限档 → Accept edits');
+    await expect(page.locator('#messages')).toContainText('权限档 → 自动接受编辑');
 
     await expectNoBrowserErrors(page);
   });
@@ -695,7 +695,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await page.locator('.perm-tile[data-mode="plan"]').focus();
     await expect(page.locator('.perm-tile[data-mode="plan"]')).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page.locator('#pillPermText')).toContainText('Plan');
+    await expect(page.locator('#pillPermText')).toContainText('规划');
     await expect(page.locator('.perm-tile[data-mode="plan"]')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.perm-tile[data-mode="default"]')).toHaveAttribute('aria-pressed', 'false');
 

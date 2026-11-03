@@ -14,6 +14,7 @@ import {
   resolveGatewayModelName,
   resolveModelPillText,
   formatCachePercent,
+  effortLevelLabel,
   effortLevelSubtitle,
   shouldShowBusyWithMirror,
   formatStreamPreviewIntervalMs,
@@ -75,6 +76,7 @@ import {
   shouldSendOnEnter,
   whatNeedsAttention,
   resolveHeaderConnBadge,
+  resolveStatusOrb,
   resolveHeaderAttentionChip,
   userBubbleFold,
   mergeRecentSessionsAcrossWorkspaces,
@@ -260,7 +262,16 @@ await ensureServerAddress();
 
   // ---- DOM ----
   const $ = id => document.getElementById(id);
+  // 破坏性入口的门（会话删除/设备吊销/rewind）问的是「这是不是移动设备」，不是「有没有触屏」。
+  // isTouchDevice（回车语义用）带 maxTouchPoints>0 兜底，在带触屏的 Windows 桌面（实测 headless
+  // 桌面 maxTouchPoints=10）会把桌面误判成手机，连带藏掉桌面端的删除/rewind（2026-11-04 E2E 红暴露）。
+  // 故单独用 (pointer: coarse)——主输入是触摸才为真，与附件 sheet 拍照项同一判据口径。
+  // 函数声明（提升）：使用点散布在 2300~7000 行，const 箭头函数会 TDZ。
+  function isMobileDevice() {
+    return matchMedia('(pointer: coarse)').matches;
+  }
   const messagesEl = $('messages'), inputEl = $('input'), statusEl = $('statusLine'), connDot = $('connDot'), connRttEl = $('connRtt'), connDotWrap = $('connDotWrap');
+  const statusOrb = $('statusOrb'); // 顶栏状态圆球（三态见 logic/panel-state.js resolveStatusOrb）
   const connBannerEl = $('connBanner'), connBannerTextEl = $('connBannerText'), connBannerDetailEl = $('connBannerDetail');
   const connBannerSpinnerEl = $('connBannerSpinner'), connBannerRetryEl = $('connBannerRetry');
   const btnSend = $('btnSend'), btnStop = $('btnStop'), btnNew = $('btnNew'), btnHome = $('btnHome'), btnSessions = $('btnSessions');
@@ -355,7 +366,7 @@ await ensureServerAddress();
     // 插进 CSS selector 或 HTML 串。
     if (customModelGrid && !customModelGrid.querySelector(`[data-model="${CSS.escape(value)}"]`)) {
       const card = el(`
-        <div class="model-tile p-2 rounded-xl border border-line bg-surface active:bg-sunk cursor-pointer transition-all">
+        <div class="model-tile p-2 rounded-xl border border-line bg-surface-container active:bg-sunk cursor-pointer transition-all">
           <div class="text-xs font-semibold truncate text-ink"></div>
           <div class="text-[9.5px] text-ink-soft truncate mt-0.5"></div>
         </div>
@@ -591,7 +602,7 @@ await ensureServerAddress();
         || (!currentModel && val === 'default' && (selectedVal === 'default' || !selectedVal));
       const using = active ? t(' · 使用中') : '';
       const card = el(`
-        <div data-model="${esc(val)}" class="model-tile p-2 rounded-xl border border-line bg-surface active:bg-sunk cursor-pointer transition-all ${active ? 'ring-1 ring-accent border-accent text-accent bg-secondary-container' : ''}">
+        <div data-model="${esc(val)}" class="model-tile p-2 rounded-xl border border-line bg-surface-container active:bg-sunk cursor-pointer transition-all ${active ? 'ring-1 ring-accent border-accent text-accent bg-secondary-container' : ''}">
           <div class="text-xs font-semibold truncate ${active ? 'text-accent' : 'text-ink'}">${esc(display)}${using ? `<span class="text-[11px] font-normal opacity-80">${esc(using)}</span>` : ''}</div>
           <div class="text-xs text-ink-soft truncate mt-0.5">${esc(subtitle || val)}</div>
         </div>
@@ -2352,7 +2363,10 @@ await ensureServerAddress();
         badge.className = 'shrink-0 text-[10px] px-1.5 py-0.5 rounded-full bg-sunk text-ink-soft';
         badge.textContent = t('这台（当前）');
         head.appendChild(badge);
-      } else {
+      } else if (!isMobileDevice()) {
+        // 【手机端不建吊销按钮】2026-11-03 用户要求：手机上不要任何破坏性入口。
+        // 吊销设备信任=把某台设备踢下线，误触代价高且不可逆（需到那台设备重新走审批）。
+        // 移动端列表只读展示设备；要吊销去电脑端操作。
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'shrink-0 px-2.5 py-1 rounded-lg border border-danger text-danger active:bg-danger/10 text-[11px] font-medium';
@@ -3562,7 +3576,7 @@ await ensureServerAddress();
       // t-status / t-in / t-out 三个 class 与通用工具卡同名【是有意的】——合卡后 tool_result 靠
       // toolCards.get(toolUseId) 找卡再 querySelector 这三个，同名即可零改动复用那条路径。
       const wrap = el(`
-        <details class="msg-frame subagent-card rounded-lg bg-surface border border-line text-xs" data-testid="subagent-card">
+        <details class="msg-frame subagent-card rounded-md bg-surface-container-low border border-line text-xs" data-testid="subagent-card">
           <summary class="px-3 py-2 cursor-pointer select-none">
             <div class="flex items-center gap-2 min-w-0">
               <span class="t-status status-icon shrink-0"></span><span class="sa-title text-ink font-medium truncate"></span>
@@ -3884,7 +3898,10 @@ await ensureServerAddress();
     // 纯本地操作，置于断线检查之前；若未来 CLI 把 model 纳入 slash_commands 则让位透传。
     // /rewind 前端拦截——同 /model：TUI 命令不可透传（SDK 非交互，出不来那两步选择界面）。
     // 映射到本地的两步面板，最终仍落在 session:rewind:preview / confirm 上。
+    // 【手机端不开面板】2026-11-03 用户要求：手机上不要任何破坏性入口。回退会截断对话/代码，
+    // 移动端给一句指引去电脑操作，不透传（CLI 非交互下出不来选择界面，透传只会报错）。
     if (/^\/rewind(\s|$)/.test(rawText) && !(window.availableSkills || []).includes('rewind')) {
+      if (isMobileDevice()) { addBar(t('回退是破坏性操作，请在电脑端执行'), 'text-info'); return; }
       if (!displayedSessionId) { addBar(t('还没有会话可回退'), 'text-info'); return; }
       inputEl.value = '';
       inputEl.dispatchEvent(new Event('input'));
@@ -4318,7 +4335,8 @@ await ensureServerAddress();
     if (row?.dataset?.path) pickAtMention(row.dataset.path);
   });
   // 前端本地拦截命令（不透传后端），并入提示列表
-  const LOCAL_COMMANDS = ['model', 'rewind'];
+  // 本地补全命令：手机端不列 rewind（破坏性入口不透出，见 send() 里的 /rewind 拦截）
+  const LOCAL_COMMANDS = isMobileDevice() ? ['model'] : ['model', 'rewind'];
 
   inputEl.addEventListener('input', () => {
     const val = inputEl.value;
@@ -4574,8 +4592,8 @@ await ensureServerAddress();
         // aria-pressed 是这组按钮的「选中态」——单选语义靠它播报，样式那圈 ring 只有看得见的人能用。
         const card = el(`
           <button type="button" data-mode="${esc(s.id)}" aria-pressed="false" class="perm-tile w-full text-left p-2 rounded-xl border border-line bg-surface active:bg-sunk cursor-pointer transition-all${dangerCls}">
-            <div class="text-xs font-semibold ${titleCls} leading-snug">${esc(s.title)}</div>
-            <div class="text-[11px] ${descCls} mt-0.5 leading-snug line-clamp-2">${esc(s.desc)}</div>
+            <div class="text-xs font-semibold ${titleCls} leading-snug">${esc(t(s.title))}</div>
+            <div class="text-[11px] ${descCls} mt-0.5 leading-snug line-clamp-2">${esc(t(s.desc))}</div>
           </button>
         `);
         customPermGrid.appendChild(card);
@@ -4622,7 +4640,9 @@ await ensureServerAddress();
 
     // Sync Pill Display Text（CLI 英文档名；Bypass 仅权限段标红，非整颗 chip）
     if (pillPermText) {
-      pillPermText.textContent = PERM_PILL_LABEL[mode] || mode;
+      // 显示走 t()：meta 表存中文（zh 词典即原文、原样返回），en 模式经 EN_DICT 回译英文。
+      // wire id（permModeSelect.value / 持久化）不受影响。
+      pillPermText.textContent = t(PERM_PILL_LABEL[mode] || mode);
       const tone = pillPermTone(mode);
       pillPermText.classList.toggle('text-danger', tone === 'danger');
       pillPermText.classList.toggle('pill-perm-plan', tone === 'plan');
@@ -4686,6 +4706,7 @@ await ensureServerAddress();
     effortSelect.value = val || '';
 
     if (pillEffortText) {
+      // effortUiState 内部已做显示名汉化（含组合串逐段），这里不再二次包装。
       pillEffortText.textContent = effortUiState(val, [], {
         mirrorReadonly: Boolean(mirrorReadonlySid),
         effective: appContext.state.effortEffective,
@@ -4790,8 +4811,8 @@ await ensureServerAddress();
         // UX-014：副文案增量信息，非「思考等级: low」同义反复
         const sub = effortLevelSubtitle(lv) || (isUltra ? t('xhigh + 多 agent · 最彻底') : '');
         const lvTile = el(`
-          <div data-level="${esc(lv)}" class="effort-tile p-2 rounded-xl border border-line bg-surface active:bg-sunk cursor-pointer transition-all ${active ? 'ring-1 ring-accent border-accent text-accent bg-secondary-container' : ''}">
-            <div class="text-xs font-semibold ${active ? 'text-accent' : 'text-ink'}">${esc(lv)}</div>
+          <div data-level="${esc(lv)}" class="effort-tile p-2 rounded-xl border border-line bg-surface-container active:bg-sunk cursor-pointer transition-all ${active ? 'ring-1 ring-accent border-accent text-accent bg-secondary-container' : ''}">
+            <div class="text-xs font-semibold ${active ? 'text-accent' : 'text-ink'}">${esc(effortLevelLabel(lv))}</div>
             ${sub ? `<div class="text-xs text-ink-soft mt-0.5">${esc(sub)}</div>` : ''}
           </div>
         `);
@@ -4805,7 +4826,8 @@ await ensureServerAddress();
     }
     // 同步 pill 文案（没指定显「CLI 默认」，已知实际档时带上它）
     if (pillEffortText) {
-      pillEffortText.textContent = ultracodeArmed ? 'ultracode' : ui.label;
+      // ui.label 已在 effortUiState 内汉化；ultracode 武装态单独显示「超频」
+      pillEffortText.textContent = ultracodeArmed ? effortLevelLabel('ultracode') : ui.label;
     }
     syncDefaultsPillTitle();
     if (_composeReady) refreshComposeDefaultsSummary();
@@ -5780,6 +5802,20 @@ await ensureServerAddress();
       connDot.className = `w-2 h-2 rounded-full ${fill} shrink-0`;
     }
     connDotWrap.classList.toggle('hidden', !spec.visible);
+    // 状态圆球：与角标同源数据（instances + needsYou + 连接态），三态见 resolveStatusOrb。
+    // 断线整颗隐藏——圆球表达会话运行态，断线时没有可信数据源，摆灰球只会误导。
+    if (statusOrb) {
+      const orb = resolveStatusOrb({
+        instances: instancesList,
+        viewingInstanceId,
+        needsYou: needsYouList,
+        connected: connBanner.isConnected(),
+      });
+      statusOrb.classList.toggle('hidden', !orb.visible);
+      statusOrb.dataset.orb = orb.state;
+      statusOrb.title = orb.label;
+      statusOrb.setAttribute('aria-label', orb.label);
+    }
     updateHeaderAttentionChip();
   }
   function updateTerminalStateForDir(cwd, sessions, terminalBusy, terminalWaiting) {
@@ -6287,6 +6323,8 @@ await ensureServerAddress();
   const { openLeftSidebar, closeLeftSidebar } = drawer;
   // 顶栏文字 chip 与会话按钮同一去处：点它打开抽屉（需要你区 / 服务异常区 / 工作区树就在里面）。
   attentionChipEl?.addEventListener('click', () => openLeftSidebar());
+  // 状态圆球同出口：点一下开侧栏看是哪个会话在跑/在等你（与 attentionChip 同语汇）
+  statusOrb?.addEventListener('click', () => openLeftSidebar());
 
   const { openDeleteSession } = createSessionDeleteController(appContext, {
     socket, addBar, appConfirm, showDrawerNotice: drawer.showNotice,
@@ -6769,8 +6807,11 @@ await ensureServerAddress();
       const container = el(`<div class="relative overflow-hidden w-full select-none swipe-row-container"></div>`);
 
       // 背景红底“关闭”按钮
+      // 【手机端不建】2026-11-03 用户要求：手机上不要任何破坏性入口。关闭会话=移除 tab，
+      // 属破坏性操作，移动端整块不建（连带下方左滑手势一起禁，否则滑出空白）。
+      // 电脑端保留：鼠标左滑是显式意图，误触面小。
       let deleteBtn;
-      if (liveInst) {
+      if (liveInst && !isMobileDevice()) {
         deleteBtn = el(`<div class="absolute inset-y-0 right-0 w-[70px] bg-danger text-white flex items-center justify-center font-sans font-semibold text-xs active:opacity-90 cursor-pointer select-none" style="z-index: 10;">${t('关闭')}</div>`);
         deleteBtn.onclick = async (e) => {
           e.stopPropagation();
@@ -6935,7 +6976,8 @@ await ensureServerAddress();
       container.appendChild(rowContent);
 
       // 手机端：侧滑触控手势监听 (Swipe left gestures) - 贴合指尖且防点击误触
-      if (liveInst) {
+      // 【手机端不挂】与上方 deleteBtn 同源闸：没有可露出的关闭块，手势只会把行滑进空白。
+      if (liveInst && !isMobileDevice()) {
         let rowStartX = 0, rowStartY = 0;
         let isDragging = false;
 
@@ -8370,7 +8412,7 @@ await ensureServerAddress();
       // 槽位与 live 的 ensureSubagentCard 逐项同构（合卡后 history 的 tool_result 分支同样靠
       // .t-status / .t-out / dataset.toolName 落结果）——两边模板漂了就会出现「刷新后结论不见」。
       const wrap = el(`
-        <details class="msg-frame subagent-card rounded-lg bg-surface border border-line text-xs" data-testid="subagent-card" data-history="1">
+        <details class="msg-frame subagent-card rounded-md bg-surface-container-low border border-line text-xs" data-testid="subagent-card" data-history="1">
           <summary class="px-3 py-2 cursor-pointer select-none">
             <div class="flex items-center gap-2 min-w-0">
               <span class="t-status status-icon shrink-0"></span><span class="sa-title text-ink font-medium truncate"></span>

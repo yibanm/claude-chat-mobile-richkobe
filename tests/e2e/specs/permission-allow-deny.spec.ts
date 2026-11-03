@@ -109,7 +109,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await waitForIdle(page);
     await openSessionsSidebar(page);
     await openWorkspaceSession(page, ANOTHER_WORKSPACE, 'Another App Concurrency');
-    await expect(page.locator('#pillPermText')).toContainText('Plan');
+    await expect(page.locator('#pillPermText')).toContainText('规划');
 
     await sendChatMessage(page, 'test:permission');
     await expect(page.locator('#permModal')).toBeVisible();

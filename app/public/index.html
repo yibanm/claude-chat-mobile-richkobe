@@ -74,7 +74,7 @@
   </div>
 
   <!-- 顶部状态条 -->
-  <header class="flex items-center justify-between px-4 py-2.5 bg-surface border-b border-line shrink-0 sticky top-0 z-20">
+  <header class="flex items-center justify-between px-4 py-2.5 bg-surface-container border-b border-line shrink-0 sticky top-0 z-20">
     <!-- Left Section: Sidebar/Workspaces Toggler -->
     <div class="relative flex items-center gap-1.5 shrink-0">
       <button id="btnSessions" class="relative w-9 h-9 flex items-center justify-center rounded-xl text-ink-soft hover:bg-sunk active:scale-95 transition-all select-none border border-line-soft bg-surface shadow-sm" title="查看工作区、会话列表和后台状态" aria-label="工作区与会话">
@@ -100,6 +100,12 @@
 
     <!-- Center Section: Elegant top context pill with workspace and status -->
     <div class="flex items-center justify-center flex-1 min-w-0">
+      <!-- 状态圆球（2026-11-03 用户要求，对齐 Claude 桌面客户端的运行态指示）：
+           三态由 logic/panel-state.js resolveStatusOrb 判——needs-you 琥珀呼吸 / running 旋转环 /
+           idle 静态灰；断线整颗隐藏（无可信数据源）。点一下=打开会话抽屉（与 attentionChip 同出口）。
+           立体感：径向渐变高光 + 内阴影，M3 的 tonal 球体而非扁平圆点。 -->
+      <button id="statusOrb" type="button" class="status-orb hidden shrink-0" data-orb="idle"
+        title="会话状态" aria-label="会话状态" data-testid="status-orb"></button>
       <!-- 默认 hidden：空首页/compose 不显示；进入真实会话后由 app.js syncTopContextPillVisibility 打开 -->
       <button id="topContextPill" class="top-context-pill select-none cursor-pointer hidden" title="工作区：浏览或查看改动" aria-hidden="true" tabindex="-1">
         <!-- Minimalist folder icon in Accent color -->
@@ -162,7 +168,7 @@
   <div id="sidebarScrim" class="hidden fixed inset-0 z-30 bg-black/40 backdrop-blur-[1px] transition-opacity duration-300"></div>
 
   <!-- 左侧抽屉式侧边栏 (Left Sidebar Drawer) -->
-  <aside id="leftSidebar" class="fixed inset-y-0 left-0 z-40 w-5/6 max-w-sm h-full bg-surface border-r border-line shadow-pop transform -translate-x-full transition-transform duration-300 flex flex-col">
+  <aside id="leftSidebar" class="fixed inset-y-0 left-0 z-40 w-5/6 max-w-sm h-full bg-surface-container-low border-r border-line shadow-pop transform -translate-x-full transition-transform duration-300 flex flex-col">
     <!-- 侧边栏顶部标题区 -->
     <div class="px-4 py-3 border-b border-line flex items-center justify-between shrink-0">
       <span class="text-sm font-semibold uppercase tracking-wide text-ink" style="font-family:var(--font-read)">工作区与会话</span>
@@ -652,7 +658,7 @@
            同一句提示只出现一处，别再另起一行小字）；
            live 状态迁到消息流 #streamLiveStatus，不再占 pill 顶行。
            CLI 镜像：placeholder 显示「终端运行中 · 只读追平」等，发送位变「续接 CLI 会话」。-->
-      <div class="chat-input-pill flex flex-col gap-1 p-2 bg-surface shadow-md border border-line">
+      <div class="chat-input-pill flex flex-col gap-1 p-2 bg-surface-container-high shadow-md border border-line">
         <!-- Top Row: Full-width Textarea
              @ 文件引用候选不再横滑 chips：与 / 斜杠提示同款纵向浮层（#atMentionHints，JS 挂到 input 父级 absolute bottom-full） -->
         <div class="w-full flex items-start relative">

@@ -30,7 +30,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await page.locator('#input').fill('');
     await expect(page.locator('#btnSend')).toBeHidden();
     await expect(page.locator('#pillModelText')).not.toHaveText('');
-    await expect(page.locator('#pillPermText')).toContainText('Manual');
+    await expect(page.locator('#pillPermText')).toContainText('手动');
 
     // 2. 回空首页枢纽：输入条隐藏；顶栏文件夹 pill 隐藏；无「当前工作区」标。
     await page.locator('#btnHome').click();
@@ -53,9 +53,9 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await expect(page.locator('#input')).toBeVisible();
     await expect(page.locator('#btnSend')).toBeHidden(); // 空输入不露灰发送
     await expect(page.locator('#btnAttach')).toBeVisible();
-    await expect(page.locator('#pillPermText')).toContainText('Manual');
+    await expect(page.locator('#pillPermText')).toContainText('手动');
     // 页内默认档摘要至少带上权限文案（与底栏 pill 同源）
-    await expect(page.locator('[data-compose-defaults]')).toContainText('Manual');
+    await expect(page.locator('[data-compose-defaults]')).toContainText('手动');
 
     // 3a. 顶栏工作区 pill：显示、指向当前工作区、带未提交改动角标（mock session:new 那条 status_line 的 git 段）
     await expect(page.locator('#topContextPill')).toBeVisible();

@@ -7,7 +7,7 @@
 // 同层 logic/ 子模块之间可以互相 import，但不得成环（npm run check 的 import 边界守卫会拒）。
 // 想再加 import 前先自问：新依赖能在裸 node 里被 import 且不碰宿主 API 吗？不能就别加。
 
-import { t } from '../i18n.js';
+import { t, tk } from '../i18n.js';
 
 // ---- 权限档：与 @anthropic-ai/claude-agent-sdk PermissionMode 枚举对齐 ----
 // SDK 仅类型层有枚举、无运行时 list；本数组 = 前端显示/校验的权威源，由
@@ -37,50 +37,52 @@ export function isSdkPermissionMode(mode) {
 const PERMISSION_MODE_TILE_META = Object.freeze({
   default: {
     title: 'Manual',
-    desc: 'Prompts for dangerous operations',
+    desc: tk('危险操作会询问'),
     selectLabel: 'Manual',
-    pill: 'Manual',
-    bar: 'Manual',
+    // 显示文案中文化（2026-11-03 用户要求档位汉化）：zh 直接显示中文；en 模式经 i18n 词典
+    // 回译为英文（EN_DICT 里有对应条目），i18n spec 的 en 断言不受影响。wire id 不变。
+    pill: tk('手动'),
+    bar: tk('手动'),
     danger: false,
   },
   plan: {
-    title: 'Plan',
-    desc: 'Planning mode, no tool execution',
+    title: tk('规划'),
+    desc: tk('只出计划、不执行工具'),
     selectLabel: 'Plan',
-    pill: 'Plan',
-    bar: 'Plan',
+    pill: tk('规划'),
+    bar: tk('规划模式'),
     danger: false,
   },
   acceptEdits: {
-    title: 'Accept edits',
-    desc: 'Auto-accept file edit operations',
+    title: tk('自动接受编辑'),
+    desc: tk('文件编辑类操作自动放行'),
     selectLabel: 'Accept edits',
-    pill: 'Accept edits',
-    bar: 'Accept edits',
+    pill: tk('自动接受编辑'),
+    bar: tk('自动接受编辑'),
     danger: false,
   },
   dontAsk: {
-    title: "Don't ask",
-    desc: 'Deny if not pre-approved, no prompts',
+    title: tk('免询问'),
+    desc: tk('未预批准的一律拒绝、不弹窗'),
     selectLabel: "Don't ask",
-    pill: "Don't ask",
-    bar: "Don't ask",
+    pill: tk('免询问'),
+    bar: tk('免询问'),
     danger: false,
   },
   auto: {
-    title: 'Auto',
-    desc: 'Model classifier approves or denies',
+    title: tk('自动'),
+    desc: tk('由模型分类器判定放行或拒绝'),
     selectLabel: 'Auto',
-    pill: 'Auto',
-    bar: 'Auto',
+    pill: tk('自动'),
+    bar: tk('自动'),
     danger: false,
   },
   bypassPermissions: {
-    title: 'Bypass permissions',
-    desc: 'Bypass all permission checks',
+    title: tk('全放行'),
+    desc: tk('绕过全部权限检查'),
     selectLabel: 'Bypass permissions',
-    pill: 'Bypass',
-    bar: 'Bypass permissions',
+    pill: tk('全放行'),
+    bar: tk('绕过全部权限检查'),
     danger: true,
   },
 });

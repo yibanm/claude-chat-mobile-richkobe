@@ -1,6 +1,11 @@
 // helpers: tests/helpers/playwright.ts
 
 import { test, expect } from '@playwright/test';
+
+// 2026-11-04：破坏性入口（设备吊销 / /rewind）按 (pointer:coarse) 门控为移动端隐藏，
+// 本 spec 测的正是这些流程，故切桌面 context（fine pointer）。
+// history-fork 的长按是合成 touchstart 事件，不依赖 context 的 hasTouch，切换安全。
+test.use({ hasTouch: false, isMobile: false });
 import { ensureComposerReady, expectNoBrowserErrors, gotoMock, openGeneralPage, openGeneralSettings } from '../../helpers/playwright';
 import { MAIN_WORKSPACE, expandWorkspace, expectSidebarClosed, openSessionsSidebar, openWorkspaceSession } from '../../helpers/sidebar-ui';
 
@@ -233,7 +238,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await ensureComposerReady(page);
 
     await expect(page.locator('#input')).toHaveAttribute('placeholder', '给 Claude 发消息...');
-    await expect(page.locator('#pillPermText')).toHaveText('Manual');
+    await expect(page.locator('#pillPermText')).toHaveText('手动');
     await expect(page.locator('#btnNew')).toHaveAttribute('title', '创建新会话');
 
     await expectNoBrowserErrors(page);

@@ -9,6 +9,11 @@
 // helpers: tests/helpers/playwright.ts
 
 import { test, expect } from '@playwright/test';
+
+// 2026-11-04：破坏性入口（设备吊销 / /rewind）按 (pointer:coarse) 门控为移动端隐藏，
+// 本 spec 测的正是这些流程，故切桌面 context（fine pointer）。
+// history-fork 的长按是合成 touchstart 事件，不依赖 context 的 hasTouch，切换安全。
+test.use({ hasTouch: false, isMobile: false });
 import { gotoMock, expectNoBrowserErrors } from '../../helpers/playwright';
 
 // 指纹与信任名单同住「接入与设备」这一页——面板是两级的，不切页的话它们在 hidden 子页里，

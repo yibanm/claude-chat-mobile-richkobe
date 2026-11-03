@@ -229,7 +229,15 @@ details > summary::-webkit-details-marker { display: none; }
 /* A2：工具卡是【过程痕迹】，正文才是主角。3px 强调色竖条在真实会话（一屏 10–30 张卡）里
    会连成一堵彩色的墙，把读者的视线从回答本身拽走。降成 1px 中性线，只保留「这段是工具」的锚点。
    注意 --line 在明暗两套 token 下都是可见的分隔线色（#E3E0D6 / #2E2C2A），不会消失。 */
-.toolcard { border-left: 1px solid var(--line) !important; }
+/* M3 elevation：工具卡是消息流里最低层的内容块，给 surface-container-low 底 + medium 圆角，
+   与无底的助手正文、secondary-container 底的用户气泡形成三级 tonal 层次——
+   M3 的「立体感」就是靠这套色调位移，不是靠阴影堆叠。 */
+.toolcard {
+  border-left: 1px solid var(--line) !important;
+  background: var(--m3-surface-container-low);
+  border-radius: var(--radius-md);
+  padding: 0.35rem 0.5rem;
+}
 /* 思考块：内心独白——serif 斜体淡色 */
 /* A2 收尾：思考块与工具卡同属【过程痕迹】，视觉重量必须一致。
    只降工具卡会留下更刺眼的断层——一屏里工具是轻行、思考却还是带边框的白卡片。 */
@@ -436,6 +444,58 @@ body.ccm-sheet-open #messages {
 }
 /* 助手侧刻意保持无底文本（项目标志性的 serif 阅读态）：M3 chat 规范本身有无底变体，
    且代码块底色是 surface-sunk，再套一层 container 底会让层级糊掉。不给助手侧加气泡底。 */
+
+/* ── 顶栏状态圆球（M3 立体球体，非扁平圆点）────────────────────────────────
+   三态（data-orb）：idle 静态灰 / running primary 色 + 旋转环 / needs-you 琥珀呼吸脉冲。
+   立体感来源：径向渐变高光（左上 30% 处白点）+ 内阴影压暗下缘 + 外投影托底，
+   这是 M3 tonal 球体的做法；扁平纯色圆点在深色底上会「贴」在界面上、没有体积。
+   断线时整颗 hidden（JS 控制），不摆灰球误导。 */
+.status-orb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  margin-right: 8px;
+  cursor: pointer;
+  position: relative;
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.55), rgba(255,255,255,0) 42%),
+              var(--m3-outline);
+  box-shadow: inset 0 -2px 3px rgba(0,0,0,.22), 0 1px 2px rgba(0,0,0,.18);
+  transition: background .2s ease, box-shadow .2s ease;
+}
+.status-orb[data-orb="running"] {
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.5), rgba(255,255,255,0) 42%),
+              var(--m3-primary);
+  box-shadow: inset 0 -2px 3px rgba(0,0,0,.25), 0 0 0 3px color-mix(in srgb, var(--m3-primary) 18%, transparent),
+              0 1px 2px rgba(0,0,0,.18);
+}
+/* 旋转环：::after 画一圈缺口弧，转起来表达「在跑」。不用整圈实环——转了也看不出在转。 */
+.status-orb[data-orb="running"]::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--m3-primary);
+  animation: orb-spin 1.1s linear infinite;
+}
+.status-orb[data-orb="needs-you"] {
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.55), rgba(255,255,255,0) 42%),
+              var(--warning);
+  animation: orb-breathe 1.6s ease-in-out infinite;
+}
+@keyframes orb-spin { to { transform: rotate(360deg); } }
+@keyframes orb-breathe {
+  0%, 100% { box-shadow: inset 0 -2px 3px rgba(0,0,0,.22), 0 0 0 0 color-mix(in srgb, var(--warning) 45%, transparent); }
+  50%      { box-shadow: inset 0 -2px 3px rgba(0,0,0,.22), 0 0 0 6px color-mix(in srgb, var(--warning) 0%, transparent); }
+}
+/* color-mix 要 Chrome 111+：APK WebView 核心版本取决于用户手机，故呼吸环的外圈用
+   显式 rgba 回落——不支持 color-mix 的引擎上外圈不显（球体本体与旋转环不受影响）。 */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .status-orb[data-orb="running"] { box-shadow: inset 0 -2px 3px rgba(0,0,0,.25), 0 1px 2px rgba(0,0,0,.18); }
+  .status-orb[data-orb="needs-you"] { animation: none; }
+}
 
 /* ── M3 组件基元 ─────────────────────────────────────────────────────────── */
 

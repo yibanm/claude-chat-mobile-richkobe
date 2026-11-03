@@ -149,7 +149,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await openSettingsSection(page, 'effort');
     await expect(page.locator('.effort-tile[data-level="ultracode"]')).toBeVisible();
     await page.locator('.effort-tile[data-level="ultracode"]').click();
-    await expect(page.locator('#pillEffortText')).toContainText('ultracode');
+    await expect(page.locator('#pillEffortText')).toContainText('超频');
     await closeSettings(page);
     await expect(page.locator('#settingsSheet')).toHaveClass(/translate-y-full/);
 

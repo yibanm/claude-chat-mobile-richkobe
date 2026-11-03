@@ -119,6 +119,24 @@ export function formatCachePercent(ratio) {
   return `${Math.round(n)}%`;
 }
 
+// 思考档的中文显示名（2026-11-03 用户要求「档位汉化好一点」）。
+// 【只改显示，不改 wire】level 原值（low/medium/…/ultracode/auto）仍是要发给 SDK 的档位 id，
+// 磁贴的 data-level、effortSelect.value、持久化字段一律不动；只有给人看的文案走这张表。
+// 未收录的档位（CLI 未来新增）原样回落，不猜译名。
+export function effortLevelLabel(level) {
+  const map = {
+    low: t('低'),
+    medium: t('中'),
+    med: t('中'),
+    high: t('高'),
+    xhigh: t('很高'),
+    max: t('最高'),
+    ultracode: t('超频'),
+    auto: t('自动'),
+  };
+  return map[String(level || '').toLowerCase()] || String(level || '');
+}
+
 // UX-014：思考档副文案（增量信息，非重复等级名）。
 export function effortLevelSubtitle(level) {
   const lv = String(level || '').toLowerCase();
@@ -278,13 +296,15 @@ export function effortUiState(level, supportedLevels, { mirrorReadonly = false, 
   const normalized = level || null;
   const levels = Array.isArray(supportedLevels) ? supportedLevels : [];
   const selected = normalized && levels.includes(normalized) ? normalized : '';
-  const inherited = effective ? `${effective} · ${t('CLI 默认')}` : t('CLI 默认');
+  // 组合串逐段汉化：effective 是服务端给的 wire 档（medium/high…），经 effortLevelLabel 转显示名；
+  // 「CLI 默认」走 t()。整串不查词典（组合串不进 EN_DICT，en 模式靠两段各自回译拼出）。
+  const inherited = effective ? `${effortLevelLabel(effective)} · ${t('CLI 默认')}` : t('CLI 默认');
   return {
     level: normalized,
     selected,
-    label: normalized || (mirrorReadonly ? t('CLI 档位未知') : inherited),
+    label: normalized ? effortLevelLabel(normalized) : (mirrorReadonly ? t('CLI 档位未知') : inherited),
     placeholder: normalized
-      ? `${normalized}${t('（当前模型不可选）')}`
+      ? `${effortLevelLabel(normalized)}${t('（当前模型不可选）')}`
       : (mirrorReadonly ? t('CLI 当前档未知') : inherited),
   };
 }

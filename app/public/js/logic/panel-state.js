@@ -576,6 +576,26 @@ export function whatNeedsAttention({ instances, needsYou } = {}) {
   return { level: 'ok', items: [] };
 }
 
+// 顶栏状态圆球（2026-11-03 用户要求：像 Claude 桌面客户端那样的运行态圆球）。
+// 三态优先级：needs-you > running > idle。
+//   needs-you：whatNeedsAttention 命中（审批/提问等待中）——琥珀色 + 呼吸脉冲，点一下就能推进；
+//   running：当前查看实例 state=busy（含后台任务折进来的口径，与抽屉一致）——primary 色 + 旋转环；
+//   idle：无实例 / 实例空闲 / done / error——outline 灰，静态。
+// 未连接时整颗隐藏：圆球表达的是「会话的运行态」，断线时没有可信数据源，摆一颗灰球只会误导。
+// disconnected 判据独立于三态：调用方传 connected=false 即隐藏，不在这里猜连接状态。
+export function resolveStatusOrb({ instances = [], viewingInstanceId = null, needsYou = [], connected = true } = {}) {
+  if (!connected) return { visible: false, state: 'idle', label: '' };
+  const attention = whatNeedsAttention({ instances, needsYou });
+  if (attention.level === 'attention') {
+    return { visible: true, state: 'needs-you', label: t('需要你处理') };
+  }
+  const viewing = Array.isArray(instances) ? instances.find(i => i?.instanceId === viewingInstanceId) : null;
+  if (viewing?.state === 'busy') {
+    return { visible: true, state: 'running', label: t('运行中') };
+  }
+  return { visible: true, state: 'idle', label: t('空闲') };
+}
+
 // 顶栏会话按钮右下角标：有事才出现。
 // 优先级：已连过再断开 > 需要你 > 隐藏（服务告警不在此列，见 whatNeedsAttention 头注）。
 // 首连中（从未连上）不点亮，避免每次打开闪一颗红点（与横幅延迟同因）。
