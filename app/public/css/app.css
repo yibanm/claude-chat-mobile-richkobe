@@ -577,7 +577,11 @@ body.ccm-sheet-open #messages {
 .composer-actions {
   position: relative;
   z-index: 1;
-  background: var(--surface);
+  /* 2026-11-04 修「白方块」：上游旧设计给动作区垫 --surface 底——当年 pill 底同为
+     --surface，同色不可见；M3 把 pill 底改成沉面色后，这层垫底比 pill 亮一档，
+     图标背后显出一块白斑。动作区本不需要背景（chips 的 mask 渐隐只作用于 chips
+     自身，与动作区无关），垫底改透明。 */
+  background: transparent;
 }
 /* 选图按钮只在有精确指针的设备（电脑浏览器）上出现。
    判据用能力而非宽度：(hover:hover)+(pointer:fine) 对「电脑 / 手机」的区分不随窗口尺寸变化，

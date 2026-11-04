@@ -681,19 +681,22 @@
         <div class="composer-toolbar flex items-center gap-1 w-full pt-1.5 border-t border-line-soft/30 px-1">
           <!-- 左侧动作区：附件 / 选图——附件是输入的起点，放最左（2026-11-02 用户要求）
                M3 icon button 组件（md-icon-button）：自带 40dp 触达区、圆形 state layer、ripple、
-               焦点环，取代自绘的 .m3-icon-button + .m3-state。icon 走 slot="icon"。
+               焦点环，取代自绘的 .m3-icon-button + .m3-state。icon 走默认 slot（svg 不写 slot 属性）。
                #btnImage 的桌面显隐仍由 app.css 的能力媒体查询控制（host 元素的 display 可被外部覆盖）。 -->
           <div id="composerActionsLeft" class="composer-actions flex items-center gap-0.5 shrink-0">
             <!-- E17：附件按钮 → 打开 M3 来源选择 sheet（拍照/相册/上传文件） -->
             <md-icon-button id="btnAttach" title="添加附件" aria-label="添加附件">
-              <svg slot="icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+              <!-- 2026-11-04 修「白方块」：md-icon-button 的 shadow 只有匿名默认 slot
+                   （<span class="icon"><slot></slot></span>），写 slot="icon" 的 svg 匹配不到
+                   任何 slot、永不渲染，只剩空按钮底。icon 必须走默认 slot（不写 slot 属性）。 -->
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
               </svg>
             </md-icon-button>
 
             <!-- 选图按钮：仅电脑端可见（默认 hidden，桌面媒体查询里放开，见 app.css） -->
             <md-icon-button id="btnImage" class="hidden" title="添加图片" aria-label="添加图片">
-              <svg slot="icon" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 5.5A2.5 2.5 0 015.5 3h13A2.5 2.5 0 0121 5.5v13a2.5 2.5 0 01-2.5 2.5h-13A2.5 2.5 0 013 18.5v-13z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M8.5 10a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM21 15.5l-5-5L5 21" />
               </svg>
