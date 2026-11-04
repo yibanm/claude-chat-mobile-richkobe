@@ -156,7 +156,11 @@ export async function waitForIdle(page: Page) {
   await expect(page.locator('#btnSend')).not.toHaveAttribute('data-mode', 'stop', { timeout: 20_000 });
 }
 
-export async function expectNoBrowserErrors(page: Page) {
-  const errors = (page as Page & { __ccmErrors?: string[] }).__ccmErrors || [];
+export async function expectNoBrowserErrors(page: Page, allow: string[] = []) {
+  // allow：本用例【刻意制造】的预期错误子串（如离线场景的 ERR_INTERNET_DISCONNECTED）。
+  // 收集器只认 status code 白名单，net:: 码不在其内；断言面过滤是语义最窄的修法——
+  // 不放宽收集器（其它用例仍全量收），只让声明了预期错误的用例豁免自己制造的那一种。
+  const errors = ((page as Page & { __ccmErrors?: string[] }).__ccmErrors || [])
+    .filter(e => !allow.some(a => e.includes(a)));
   expect(errors).toEqual([]);
 }

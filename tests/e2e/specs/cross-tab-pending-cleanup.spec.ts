@@ -96,7 +96,6 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await expandWorkspace(page, MAIN_WORKSPACE);
     const questionRow = sessionRowByInstance(page, 'inst_1');
     await expect(questionRow).toContainText('Visual Sandbox (Main)');
-    await expect(questionRow.locator('[data-session-status]')).toHaveText('需要你');
     await expect(questionRow.locator('[data-session-status]')).toHaveAttribute('aria-label', '需要你');
 
     await questionRow.locator('button', { hasText: '✕' }).click();
@@ -129,7 +128,6 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await expandWorkspace(page, MAIN_WORKSPACE);
     const closedRow = sessionRowByInstance(page, 'inst_1');
     await expect(closedRow).toContainText('Visual Sandbox (Main)');
-    await expect(closedRow.locator('[data-session-status]')).toHaveText('需要你');
     await expect(closedRow.locator('[data-session-status]')).toHaveAttribute('aria-label', '需要你');
 
     await closedRow.locator('button', { hasText: '✕' }).click();

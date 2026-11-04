@@ -65,7 +65,8 @@ export function sessionStatusChipByInstance(page: Page, instanceId: string) {
 export async function expectSessionStatusChip(page: Page, instanceId: string, text: string) {
   const chip = sessionStatusChipByInstance(page, instanceId);
   await expect(chip).toBeVisible();
-  await expect(chip).toHaveText(text);
+  // 2026-11-04：移动端状态指示改为圆点（无文字），文字断言改 aria-label——
+  // 圆点与文字 chip 都带 aria-label，语义断言不随视觉形态漂移。
   await expect(chip).toHaveAttribute('aria-label', text);
 }
 

@@ -215,7 +215,9 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await openWorkspaceSession(page, MAIN_WORKSPACE, 'Visual Sandbox (Main)');
     await expect(page.locator('#input')).toHaveValue(kept);
 
-    await expectNoBrowserErrors(page);
+    // 本用例刻意 setOffline(true)：离线期间的资源加载失败（ERR_INTERNET_DISCONNECTED）是
+    // 用例自己制造的预期错误，不是产品缺陷，豁免这一种；其余浏览器错误仍全量断言。
+    await expectNoBrowserErrors(page, ['ERR_INTERNET_DISCONNECTED']);
   });
 
   // 全新会话首轮点停止后不跳回主页：sessionId 尚未由 SDK init 返回（本例全程 sessionId 恒 null）时

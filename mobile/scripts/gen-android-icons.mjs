@@ -72,6 +72,18 @@ const roundSvg = size => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 5
   <g clip-path="url(#rc)">${roundInner}</g>
 </svg>`;
 
+// adaptive 背景层（2026-11-04 修「图标穿帮」）：此前背景是纯色 @color，而前景层只有白色火花
+// （渐变球体在背景 rect 里、被 extractMark 剥掉）→ 桌面图标 = 纯色块 + 小白花，与 PWA 渐变球不一致。
+// 现在背景层 = 满幅渐变 rect（无圆角：启动器自己裁形状），前景 = 火花，两层合成即完整球体。
+// defs 必须带上：rect 的 fill=url(#orb) 指向 defs 里的 radialGradient，只截 rect 会渲染成黑块。
+const bgDefs = legacyInner.match(/<defs[\s\S]*?<\/defs>/i)?.[0] || '';
+const bgRect = legacyInner.match(/<rect\b[^>]*\/>/i)?.[0] || '';
+if (!bgDefs || !bgRect) {
+  console.error('icon.svg 背景层解析失败——需要 defs(radialGradient) 与背景 rect');
+  process.exit(1);
+}
+const backgroundSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${FG_SIZE}" height="${FG_SIZE}">${bgDefs}${bgRect.replace('rx="112"', '')}</svg>`;
+
 async function renderPng(browser, svg, size, outPath) {
   const page = await browser.newPage({ viewport: { width: size, height: size }, deviceScaleFactor: 1 });
   await page.setContent(
@@ -92,8 +104,9 @@ try {
     await renderPng(browser, legacySvg(size), size, join(dir, 'ic_launcher.png'));
     await renderPng(browser, roundSvg(size), size, join(dir, 'ic_launcher_round.png'));
     await renderPng(browser, foregroundSvg, FG_SIZE, join(dir, 'ic_launcher_foreground.png'));
+    await renderPng(browser, backgroundSvg, FG_SIZE, join(dir, 'ic_launcher_background.png'));
   }
-  // adaptive 背景色 = M3 primary（砖橙 tone40），与前景火花同色系、不再纯白割裂
+  // adaptive 背景 = 渐变球体位图（见上方 backgroundSvg 注释）；values 里的纯色仅作 API <26 回落引用不到时的兜底。
   writeFileSync(
     join(RES, 'values', 'ic_launcher_background.xml'),
     `<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    <color name="ic_launcher_background">#9B442B</color>\n</resources>\n`,

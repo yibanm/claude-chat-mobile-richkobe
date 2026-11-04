@@ -12,8 +12,11 @@
    surface 保持 tone99——既是正统 M3 分层，又保住项目原有的层级感。 */
 :root {
   color-scheme: light dark;
-  /* M3 tonal 分层：canvas(tone98) < surface(tone99) ；sunk 用 surfaceContainer(tone96) */
-  --canvas:#FFF8F6; --surface:#FFFBFF; --surface-sunk:#FEF1ED;
+  /* M3 tonal 分层（2026-11-04 加深一档）：此前 98/99/96/94 四档色差过小，整屏「发平发脆」。
+     现消息区 canvas=tone96、抽屉/顶栏 surface=tone98、卡片 card=tone100，三级肉眼可分；
+     顶栏与 composer 另靠 elevation 阴影与消息区拉开。 */
+  --canvas:#FEF1ED; --surface:#FFF8F6; --surface-sunk:#FEF1ED;
+  --card:#FFFBFF; /* 浮于 surface 之上的卡片层（抽屉会话行、磁贴）；dark 块另有值 */
   --line:#E4D7D4; --line-soft:#F8EBE8;
   --ink:#201A19; --ink-soft:#53433F; --ink-faint:#756B69;
   /* UI-001：M3 primary(tone40) 白字对比 6.45、作文字色对 surface 6.30，均高于旧值（5.17 / 4.95）。
@@ -55,11 +58,12 @@
   --radius-xl:28px; --radius-full:999px;
 
   /* ── M3 elevation。M3 规范是纯黑阴影，这里换成项目原有的暖色投影基调（rgba(60,50,40)），
-     层级关系照 M3 五级递增——纯黑阴影在这套暖米白上会显脏。 ── */
-  --shadow-card:0 1px 2px rgba(60,50,40,.05), 0 4px 16px rgba(60,50,40,.06);   /* level 1 */
-  --shadow-lift:0 1px 2px rgba(60,50,40,.06), 0 2px 6px 2px rgba(60,50,40,.07); /* level 2 */
-  --shadow-pop:0 1px 3px rgba(40,32,24,.10), 0 8px 24px rgba(40,32,24,.14);     /* level 3 */
-  --shadow-drag:0 2px 3px rgba(40,32,24,.12), 0 6px 10px 4px rgba(40,32,24,.10);/* level 4 */
+     层级关系照 M3 五级递增——纯黑阴影在这套暖米白上会显脏。
+     2026-11-04 加重一档：原 alpha .05/.06 在浅底上肉眼不可见，是「没有立体感」投诉的主因之一。 ── */
+  --shadow-card:0 1px 2px rgba(60,50,40,.08), 0 4px 16px rgba(60,50,40,.10);   /* level 1 */
+  --shadow-lift:0 1px 2px rgba(60,50,40,.10), 0 2px 6px 2px rgba(60,50,40,.12); /* level 2 */
+  --shadow-pop:0 1px 3px rgba(40,32,24,.14), 0 8px 24px rgba(40,32,24,.18);     /* level 3 */
+  --shadow-drag:0 2px 3px rgba(40,32,24,.16), 0 6px 10px 4px rgba(40,32,24,.14);/* level 4 */
 
   /* ── M3 typography scale（正文仍保留 serif 阅读态，见 --font-read；此处只定 UI 层）── */
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -142,6 +146,7 @@
     --m3-surface-container-lowest:#0F0B09; --m3-surface-container-low:#181210;
     --m3-surface-container:#201A19; --m3-surface-container-high:#2F2827;
     --m3-surface-container-highest:#3B3331;
+    --card:#2F2827; /* 与 light 同语义：浮于 surface 之上的卡片层（M3 dark 靠 tonal 提层） */
     --m3-on-surface:#EDE0DD; --m3-on-surface-variant:#D8C2BC;
     --m3-surface-variant:#53433F; --m3-outline:#A08C87; --m3-outline-variant:#53433F;
     --m3-inverse-surface:#EDE0DD; --m3-inverse-on-surface:#362F2D;
@@ -344,6 +349,9 @@ body.ccm-sheet-open #messages {
   border-radius: 1.25rem;
   padding: 0.5rem !important;
   transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  /* 2026-11-04 立体感：composer 是悬浮在消息流之上的操作台，elevation2 让它从内容层抬起来；
+     focus-within 的 accent 环规则在其后，会覆盖此阴影（聚焦态语义优先）。 */
+  box-shadow: var(--shadow-lift);
 }
 .chat-input-pill:focus-within {
   border-color: var(--accent);
@@ -441,6 +449,8 @@ body.ccm-sheet-open #messages {
   border-radius: var(--radius-xl) var(--radius-xl) var(--radius-xs) var(--radius-xl);
   background: var(--user-bubble);
   color: var(--m3-on-secondary-container);
+  /* 2026-11-04 立体感：气泡浮在 canvas 上需要 elevation1 托底，纯 tonal 底在浅背景下会「贴」住。 */
+  box-shadow: var(--shadow-card);
 }
 /* 助手侧刻意保持无底文本（项目标志性的 serif 阅读态）：M3 chat 规范本身有无底变体，
    且代码块底色是 surface-sunk，再套一层 container 底会让层级糊掉。不给助手侧加气泡底。 */
@@ -539,8 +549,9 @@ body.ccm-sheet-open #messages {
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: var(--shadow-pop);
 }
-/* drag handle：M3 规范 32×4dp、圆角 2dp、outline-variant 色。
-   项目原有 .sheet-handle 是另一套（更窄更淡），M3 sheet 单独用这个，不动旧 sheet 的观感。 */
+/* drag handle：M3 规范 32×4dp、圆角 2dp、outline-variant 色。attachSheet 用这套；
+   其余 sheet 沿用旧 .sheet-handle（更窄更淡），settings/general 用各自的拖拽标题区——
+   三种顶部结构并存是刻意的，不强行统一（统一要动 9 处 HTML，收益只有观感一致性）。 */
 .m3-sheet-handle {
   width: 32px;
   height: 4px;
@@ -758,6 +769,9 @@ body.ccm-sheet-open #messages {
    max-width:767px 块的 header 规则源码序在其后，会按预期覆盖掉这条。 */
 header {
   padding-top: max(0.625rem, env(safe-area-inset-top)) !important;
+  /* 2026-11-04 立体感：顶栏 sticky 浮在消息流上，只靠 1px 分隔线会「贴」住内容；
+     elevation1 托底让层级可读。阴影向下投，不遮挡自身内容。 */
+  box-shadow: var(--shadow-card);
 }
 
 @media (max-width: 767px) {
@@ -1127,6 +1141,56 @@ details.thinking.thinking-live > summary::before {
   font-weight: 600;
   line-height: 1;
   white-space: nowrap;
+}
+
+/* 会话行状态圆点（2026-11-04 用户要求：行旁只留状态指示圆点，不要文字 chip）。
+   与顶栏 #statusOrb 同源做法：径向高光 + 内阴影给体积，needs-you 呼吸脉冲提示待办。
+   语义（颜色）沿用 DRAWER_STATUS_META 的 tone 类：accent=运行中 / warning=需要你 / danger=出错。
+   圆点不带文字，语义靠 aria-label + title（helper 断言也改走 aria-label）。 */
+.session-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.5), rgba(255,255,255,0) 45%), currentColor;
+  box-shadow: inset 0 -1px 2px rgba(0,0,0,.25), 0 0 0 2px color-mix(in srgb, currentColor 16%, transparent);
+}
+.session-status-dot[data-status="permission"],
+.session-status-dot[data-status="terminal_waiting"] {
+  animation: dot-breathe 1.6s ease-in-out infinite;
+}
+@keyframes dot-breathe {
+  0%, 100% { box-shadow: inset 0 -1px 2px rgba(0,0,0,.25), 0 0 0 2px color-mix(in srgb, currentColor 38%, transparent); }
+  50%      { box-shadow: inset 0 -1px 2px rgba(0,0,0,.25), 0 0 0 5px color-mix(in srgb, currentColor 0%, transparent); }
+}
+/* 老 WebView 无 color-mix：外圈不显，圆点本体保留、呼吸退化为静态点，可接受。 */
+@supports not (color: color-mix(in srgb, red 50%, blue)) {
+  .session-status-dot { box-shadow: inset 0 -1px 2px rgba(0,0,0,.25); }
+  .session-status-dot[data-status="permission"],
+  .session-status-dot[data-status="terminal_waiting"] { animation: none; }
+}
+
+/* 移动端会话列表卡片化（2026-11-04「很脆的 view」投诉）：行从「通栏+分隔线」改为
+   圆角卡片 + 行间距 + elevation1，列表浮在 canvas 上、层级一眼可分。
+   判据与 JS 的 isMobileDevice() 同源（pointer:coarse），桌面保持通栏列表不动。
+   swipe 容器 overflow:hidden 会裁圆角，故圆角加在容器上、行内容背景透明化。 */
+@media (pointer: coarse) {
+  .swipe-row-container {
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: var(--card);
+    box-shadow: var(--shadow-card);
+    margin-bottom: 8px;
+  }
+  .swipe-row-container .row-content {
+    border-bottom: none;
+    background: transparent;
+  }
+  /* 选中行：卡片自身提色（secondary-container）。row-active 由 JS 在 active 时挂到容器上——
+     不用 :has()：老 WebView 不支持，本项目纪律是不赌新特性（同 color-mix 回落的理由）。 */
+  .swipe-row-container.row-active {
+    background: var(--m3-secondary-container);
+  }
 }
 
 /* 目录头未读角标的「还不知道」占位（resolveDirUnreadBadge state='pending'）：缓存未到位时既不能

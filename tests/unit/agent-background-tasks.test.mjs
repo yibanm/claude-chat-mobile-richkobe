@@ -834,8 +834,19 @@ test.describe('buildAgentQueryOptions — worktree 网关隔离经 settings 文�
     s.ultracode = true;
     const opts = buildAgentQueryOptions(s, { ...process.env });
     assert.equal(typeof opts.settings, 'string', 'settings 必须是文件路径而非内联对象');
-    assert.equal(JSON.stringify(opts).includes('ANTHROPIC_AUTH_TOKEN'), false);
-    s.dispose();
+    // 断言面是 argv（settings 会被 SDK 拼成 --settings <json>），不是整个 opts：
+    // opts.env 按设计透传 ANTHROPIC_*/CLAUDE_CODE_*（网关靠它），且宿主环境可能注入
+    // CLAUDE_CODE_HOST_AUTH_ENV_VAR 这类「值恰为某 key 名」的指针变量——整 opts 的 includes
+    // 会把它误判成凭据泄漏（2026-11-04 在 Claude Code 宿主会话里实测复现的红）。
+    assert.equal(String(opts.settings).includes('ANTHROPIC_AUTH_TOKEN'), false);
+    // 内联对象形式（无 worktree 文件、仅 ultracode）才是真 argv 泄漏面：它被序列化成 --settings <json>。
+    const { s: s2 } = makeSession();
+    s2.abort = new AbortController();
+    s2.ultracode = true;
+    const inline = buildAgentQueryOptions(s2, { ...process.env });
+    assert.equal(typeof inline.settings, 'object', '无 worktree 文件时 settings 是内联对象');
+    assert.equal(JSON.stringify(inline.settings).includes('ANTHROPIC_AUTH_TOKEN'), false);
+    s.dispose(); s2.dispose();
   });
 
   test('ultracode 与文件路径并存时用路径（ultracode 已写在文件里，不能因此退回对象形式）', () => {

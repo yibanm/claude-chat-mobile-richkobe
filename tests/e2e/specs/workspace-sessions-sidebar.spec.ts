@@ -313,7 +313,12 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await expectNoBrowserErrors(page);
   });
 
-  test('P0-11-delete 🗑 二次确认后从列表移除', async ({ page }) => {
+  // 2026-11-04：🗑 删除按钮改为桌面专属（移动端会话行不留任何破坏性入口，只留状态圆点），
+  // 这两条删除流程用例整组切桌面 context。
+  test.describe('桌面专属：会话删除流程', () => {
+    test.use({ hasTouch: false, isMobile: false });
+
+    test('P0-11-delete 🗑 二次确认后从列表移除', async ({ page }) => {
     await gotoMock(page);
     await openSessionsSidebar(page);
     await expandWorkspace(page, MAIN_WORKSPACE);
@@ -353,6 +358,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await expect(sessionButtonByTitle(page, 'Deleted Remote Session')).toBeVisible();
 
     await expectNoBrowserErrors(page);
+  });
   });
 
   test('P0-11n sidebar 刷新已缓存的会话列表后显示较早历史入口', async ({ page }) => {
@@ -929,14 +935,11 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await expect(mainDir.locator('.dir-badge')).toHaveText('运行中');
 
     // 同一会话已有 idle Web live 实例时，terminal busy 仍应显示，不能被 liveInst 分支遮蔽。
-    const overlapRow = sessionRowByInstance(page, 'inst_1');
     await expectSessionStatusChip(page, 'inst_1', '终端运行中');
-    await expect(overlapRow).toContainText('终端运行中');
 
     // 纯终端 busy：chip 本身写明终端，不再靠副行「· 终端」。
     const busyRow = page.locator('[data-testid="session-row"]', { hasText: 'Archived Planning Session' });
-    await expect(busyRow.locator('[data-session-status]')).toHaveText('终端运行中');
-    await expect(busyRow).toContainText('终端运行中');
+    await expect(busyRow.locator('[data-session-status]')).toHaveAttribute('aria-label', '终端运行中');
 
     // alive：终端开着但空闲，不显示主状态 chip，只显示明确副文本。
     const aliveRow = page.locator('[data-testid="session-row"]', { hasText: 'Archived Gap Session' });
@@ -947,6 +950,30 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     const plainRow = page.locator('[data-testid="session-row"]', { hasText: 'Deleted Remote Session' });
     await expect(plainRow.locator('[data-session-status]')).toHaveCount(0);
     await expect(page.locator('[data-terminal-badge]')).toHaveCount(0);
+
+    await expectNoBrowserErrors(page);
+  });
+
+  // 2026-11-04 用户要求：手机会话行不留任何删除键（🗑 彻底删除是不可逆破坏性操作），
+  // 状态只以圆点指示（文字 chip 是桌面专属）。钉住这两条，防回归把删除键塞回手机。
+  test('P0-11ak 移动端会话行无删除键、状态以圆点指示', async ({ page }) => {
+    await gotoMock(page);
+
+    await sendChatMessage(page, 'test:terminal-badge');
+    await openSessionsSidebar(page);
+    await expandWorkspace(page, MAIN_WORKSPACE);
+
+    const liveRow = sessionRowByInstance(page, 'inst_1');
+    await expect(liveRow.locator('[data-testid="session-delete"]')).toHaveCount(0);
+    // 圆点：有 data-status、无文字、语义在 aria-label
+    const dot = liveRow.locator('[data-session-status]');
+    await expect(dot).toHaveAttribute('data-status', 'busy');
+    await expect(dot).toHaveText('');
+    await expect(dot).toHaveAttribute('aria-label', '终端运行中');
+
+    // 历史会话行同样不给删除键
+    const histRow = page.locator('[data-testid="session-row"]', { hasText: 'Archived Planning Session' });
+    await expect(histRow.locator('[data-testid="session-delete"]')).toHaveCount(0);
 
     await expectNoBrowserErrors(page);
   });
@@ -970,7 +997,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await expectSessionStatusChip(page, 'inst_1', '桌面端运行中');
 
     const busyRow = page.locator('[data-testid="session-row"]', { hasText: 'Archived Planning Session' });
-    await expect(busyRow.locator('[data-session-status]')).toHaveText('桌面端运行中');
+    await expect(busyRow.locator('[data-session-status]')).toHaveAttribute('aria-label', '桌面端运行中');
     // 措辞必须真的换掉：说成"终端"会让人去翻终端标签页，而回合跑在桌面 app 的窗口里
     await expect(busyRow).not.toContainText('终端运行中');
 
@@ -989,7 +1016,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     // dataset 少写一个 terminalSource，这里就静默退回"终端运行中"——而首次渲染完全看不出来
     // （它读的是 session:list 的原始行）。inst_1 变「需要你」是广播已到达的锚点。
     await expectSessionStatusChip(page, 'inst_1', '需要你');
-    await expect(busyRow.locator('[data-session-status]')).toHaveText('桌面端运行中');
+    await expect(busyRow.locator('[data-session-status]')).toHaveAttribute('aria-label', '桌面端运行中');
     await expect(busyRow).not.toContainText('终端运行中');
 
     await expectNoBrowserErrors(page);
@@ -1011,7 +1038,7 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
 
     // 会话行 chip：措辞与 Web 侧「需要你」区分开——终端那个在手机上批不了
     const waitingRow = page.locator('[data-testid="session-row"]', { hasText: 'Archived Planning Session' });
-    await expect(waitingRow.locator('[data-session-status]')).toHaveText('终端需要你');
+    await expect(waitingRow.locator('[data-session-status]')).toHaveAttribute('aria-label', '终端需要你');
     await expect(waitingRow).not.toContainText('终端运行中');
 
     // 同屏对照：alive 仍只有副文本、无 chip。三态同形才是这次要修的缺陷本身
@@ -1035,8 +1062,8 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     await expectSessionStatusChip(page, 'inst_1', '需要你');
 
     // 第二次列表刷新让另一行出现 terminal busy 并触发整段 rows 重画；live 行仍必须读最新 instances 状态。
-    await expect(row.locator('[data-session-status]')).toHaveText('终端运行中', { timeout: 18_000 });
-    await expect(row).toContainText('终端运行中');
+    // 移动端状态指示是圆点（无文字），断言走 aria-label。
+    await expect(row.locator('[data-session-status]')).toHaveAttribute('aria-label', '终端运行中', { timeout: 18_000 });
     await expectSessionStatusChip(page, 'inst_1', '需要你');
     await expect(mainDir.locator('.dir-badge')).toHaveText('需要你');
 
@@ -1365,7 +1392,6 @@ test.describe('P0 日常零 token Mock UI 回归', () => {
     const gapRow = page.locator('[data-testid="session-row"]', { hasText: 'Archived Gap Session' });
     // ① 点之前就看得出来。占用者自报 idle（terminal='alive'），所以这一行在修之前【完全没有 chip】
     const chip = gapRow.locator('[data-session-status]');
-    await expect(chip).toHaveText('后台占用');
     await expect(chip).toHaveAttribute('aria-label', '后台占用');
 
     // 当前会话流的红字条数——这是本次回归真正要钉住的量

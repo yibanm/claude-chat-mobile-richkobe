@@ -2929,7 +2929,9 @@ registerSocketConnection(io, socket => {
       // openInstance 消费；echo 新档让 select 立即上屏（不再 echo 旧档拨回——那才是「点了没反应」）。
       if (viewingInstanceId === null) {
         pendingModeByCwd.set(viewingCwd, mode);
-        socket.emit('agent:event', {
+        // 广播而非单播：pending 档是「首条消息生效」的真实状态，另一台设备必须同步看到，
+        // 否则手机切档后电脑 pill 停在旧档（2026-11-04 用户报「思考强度和权限要同步电脑」的根因之一）。
+        io.to('approved').emit('agent:event', {
           seq: 0, epoch: 'server', sessionId: null, instanceId: null, ts: Date.now(),
           type: 'permission_mode', payload: { mode }
         });
@@ -2971,7 +2973,8 @@ registerSocketConnection(io, socket => {
     if (!a) {
       if (viewingInstanceId === null) {
         pendingEffortByCwd.set(viewingCwd, level);
-        socket.emit('agent:event', {
+        // 广播而非单播：同 permission 的 pending 路径——档位状态对所有设备必须一致。
+        io.to('approved').emit('agent:event', {
           seq: 0, epoch: 'server', sessionId: null, instanceId: null, ts: Date.now(),
           type: 'effort_mode', payload: { level }
         });
@@ -2990,7 +2993,8 @@ registerSocketConnection(io, socket => {
     if (!sid) {
       pendingEffortByCwd.set(cwd, level);
       effortByInstance.set(id, level);
-      socket.emit('agent:event', {
+      // 广播而非单播：effortByInstance 已改，instances 快照与 pill 都要让所有设备看到新档。
+      io.to('approved').emit('agent:event', {
         seq: 0, epoch: 'server', sessionId: null, instanceId: id, ts: Date.now(),
         type: 'effort_mode', payload: { level }
       });

@@ -5696,6 +5696,15 @@ await ensureServerAddress();
     const meta = spec ? DRAWER_STATUS_META[spec.status] : null;
     if (!spec || !meta) return;
     const label = t(spec.label);
+    // 2026-11-04 用户要求：会话行旁只留状态指示圆点，不要文字 chip（「太难看」）。
+    // 桌面保留文字 chip：宽屏放得下且信息量更大；移动端行宽金贵，圆点 + aria-label 足够。
+    if (isMobileDevice()) {
+      const dot = el(`<span data-session-status class="session-status-dot shrink-0 ${meta.tone}" data-status="${spec.status}"></span>`);
+      dot.title = label;
+      dot.setAttribute('aria-label', label);
+      head.appendChild(dot);
+      return;
+    }
     const chip = el(`<span data-session-status class="drawer-status-chip shrink-0 ${meta.tone}"></span>`);
     chip.textContent = label;
     chip.title = label;
@@ -6804,7 +6813,7 @@ await ensureServerAddress();
       const active = liveInst && liveInst.instanceId === viewingInstanceId;
 
       // 使用相对定位的包装容器来实现侧滑关闭
-      const container = el(`<div class="relative overflow-hidden w-full select-none swipe-row-container"></div>`);
+      const container = el(`<div class="relative overflow-hidden w-full select-none swipe-row-container${active ? ' row-active' : ''}"></div>`);
 
       // 背景红底“关闭”按钮
       // 【手机端不建】2026-11-03 用户要求：手机上不要任何破坏性入口。关闭会话=移除 tab，
@@ -6941,6 +6950,8 @@ await ensureServerAddress();
       // 原生 x 按钮：桌面/移动端均常显（此前 md:block hidden 只在桌面显示，手机端只能靠不可发现的侧滑
       // 手势——已打开会话本行没有其它可见按钮，用户体感是"点开会话后这行的图标凭空消失了"）。
       // 侧滑仍保留作快捷方式，二者并存、互不冲突，都是触发同一个 session:close。
+      // ✕=关闭 tab（历史保留可重开），非破坏性，移动端保留作唯一可发现的关闭入口；
+      // 🗑=彻底删除（不可逆）才是要在移动端禁掉的「删除键」（见下方 isMobileDevice 闸）。
       if (liveInst) {
         // ✕ 保留字符（E2E hasText:'✕'）；红=不可逆留给 🗑，故 hover 用中性色。
         const closeBtn = el(`<button class="shrink-0 w-6 h-6 rounded text-ink-faint hover:text-ink hover:bg-sunk active:bg-line text-sm" data-testid="session-close" title="${t('关闭会话')}" aria-label="${t('关闭会话')}">✕</button>`);
@@ -6963,7 +6974,8 @@ await ensureServerAddress();
 
       // 未打开的历史会话：彻底删除入口。已打开的会话走上面的关闭 tab，不在此重复给删除入口
       // （删一个正被本产品驱动的会话语义混乱，后端保护①也会拒）。无 id 的新会话（未落盘）无从删。
-      if (s.id && !liveInst) {
+      // 【手机端不建】2026-11-04 用户再明确：手机上不要任何破坏性入口——删除是最高档破坏性。
+      if (s.id && !liveInst && !isMobileDevice()) {
         const delBtn = el(`<button class="shrink-0 w-6 h-6 rounded text-ink-faint hover:text-danger hover:bg-sunk active:bg-line text-sm" data-testid="session-delete" title="${t('删除会话')}" aria-label="${t('删除会话')}">🗑</button>`);
         delBtn.onclick = e => {
           e.stopPropagation();

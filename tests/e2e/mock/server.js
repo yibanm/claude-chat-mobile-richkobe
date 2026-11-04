@@ -4741,8 +4741,12 @@ io.on('connection', socket => {
         // 弹窗渲染后自动「切到 inst_2」（viewing 变化）→ 前端 bindView → clearView 应清掉 inst_1 的审批弹窗。
         // 内部自动切，避免 runner 在弹窗打开时再走 input+btnSend——那样点击坐标会穿透到 sheet 上的审批按钮、误发回答。
         await delay(1500);
-        viewingInstanceId = 'inst_2';
+        // 守卫（2026-11-04 实测崩溃）：sleep 跨下一条用例的 __reset 醒来时 mockInstances 已恢复初态
+        // （无 inst_2），find 落空读 .cwd 抛 TypeError 杀掉整个 mock server、同分片后续全红。
+        // 醒来发现世界已重置就静默跳过（与 questionCrossTab 同款守卫）。
         const inst2ct = mockInstances.find(i => i.instanceId === 'inst_2');
+        if (!inst2ct) return;
+        viewingInstanceId = 'inst_2';
         console.log('[mock] test:permCrossTab — 自动切 viewing → inst_2（应触发前端 clearView 清弹窗）');
         io.emit('agent:event', {
           seq: 0, epoch: 'server', sessionId: null, ts: Date.now(),
@@ -4797,8 +4801,13 @@ io.on('connection', socket => {
           }
         });
         await delay(1500);
-        viewingInstanceId = 'inst_2';
+        // 守卫（2026-11-04 实测崩溃）：这条 sleep 可能跨下一条用例的 __reset 醒来——reset 把
+        // mockInstances 恢复成不含 inst_2 的初态，find 落空后读 .cwd 直接抛 TypeError 杀掉整个
+        // mock server，同分片后续用例全红（与 slow-echo 同款竞态，彼处已防、此处漏）。
+        // 醒来发现世界已重置就静默跳过：发起那条用例早已结束，新用例走自己的流程拿正确态。
         const inst2ct = mockInstances.find(i => i.instanceId === 'inst_2');
+        if (!inst2ct) return;
+        viewingInstanceId = 'inst_2';
         io.emit('agent:event', {
           seq: 0, epoch: 'server', sessionId: null, ts: Date.now(),
           type: 'instances', payload: { canRestart: mockCanRestart, viewingInstanceId, viewingCwd: inst2ct.cwd, dirs: Array.from(new Set(mockInstances.map(i => i.cwd))), instances: mockInstances, service: mockServicePayload() }
